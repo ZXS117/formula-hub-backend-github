@@ -1,0 +1,2804 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formula Learning Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bangers&family=Fredoka+One&family=Cinzel+Decorative:wght@4400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .formula-display { font-size: 1.5rem; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; text-align: center; overflow-x: auto; }
+        .tab { cursor: pointer; padding: 0.75rem 1.5rem; border-bottom: 2px solid transparent; transition: all 0.3s ease; }
+        .tab.active { border-color: #4f46e5; color: #4f46e5; font-weight: 600; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { margin: 5% auto; padding: 2rem; border: 1px solid #888; width: 90%; max-width: 800px; border-radius: 0.5rem; animation: fadeIn 0.3s; background-color: white; color: #1f2937; }
+        .dark .modal-content { background-color: #1f2933; color: #e0e0e0; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .close-btn { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .keypad { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 0.5rem; margin-top: 1rem; }
+        .keypad-button { padding: 0.5rem; border: 1px solid; border-radius: 0.25rem; cursor: pointer; transition: background-color 0.2s; font-size: 1.1rem; }
+        .live-preview { margin-top: 1rem; padding: 1rem; border-radius: 0.25rem; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+        .accordion-header { cursor: pointer; padding: 1rem; border-bottom: 1px solid; font-weight: 600; }
+        .accordion-content { display: none; padding: 1rem; border: 1px solid; border-top: none; }
+        #notification { position: fixed; top: 20px; right: 20px; color: white; padding: 1rem; border-radius: 0.5rem; z-index: 2000; display: none; animation: slideIn 0.5s forwards, fadeOut 0.5s 2.5s forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        .formula-checkbox-list { max-height: 200px; overflow-y: auto; border: 1px solid; padding: 0.5rem; border-radius: 0.25rem; }
+        .file-input-style { display: block; width: 100%; text-sm; file:mr-4; file:py-2; file:px-4; file:rounded-full; file:border-0; file:text-sm; file:font-semibold; }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        /* D3 Concept Map Styles */
+        .concept-map-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .concept-map-svg {
+            width: 100%;
+            height: 100%;
+        }
+        .graph-link {
+            stroke-opacity: 0.6;
+            stroke-width: 2.5px;
+            cursor: pointer;
+            transition: stroke-opacity 0.2s;
+        }
+        .graph-link:hover {
+            stroke-opacity: 1;
+        }
+        .graph-node circle {
+            stroke-width: 1.5px;
+            cursor: pointer;
+            transition: r 0.2s;
+        }
+        .graph-node circle:hover {
+            r: 25;
+        }
+        .graph-node text {
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+            font-weight: 500;
+        }
+
+        /* Social Tab Specific Styles */
+        .social-container {
+            background: linear-gradient(160deg, #2a0a5e 0%, #4a148c 100%); /* Deep purple, regal background */
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(255,255,255,0.1);
+            max-width: 800px;
+            width: 100%;
+            min-height: 600px; /* Ensure sufficient height */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            border: 3px solid #ffd700; /* Gold border */
+            margin-top: 20px; /* Space from main content */
+        }
+        .social-nav-tabs {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-bottom: 30px;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .social-nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 15px 10px;
+            cursor: pointer;
+            font-family: 'Cinzel Decorative', cursive;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #e0e0e0;
+            transition: all 0.3s ease-in-out;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .social-nav-tab .tab-icon {
+            font-size: 2rem; /* Larger icons */
+            margin-bottom: 5px;
+        }
+        .social-nav-tab:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: #fff;
+            transform: translateY(-3px);
+        }
+        .social-nav-tab.active {
+            background: linear-gradient(45deg, #ffd700, #ffae00); /* Gold active tab */
+            color: #4a148c; /* Dark purple text */
+            box-shadow: 0 5px 10px rgba(0,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.5);
+            transform: translateY(-5px) scale(1.05);
+            border: 2px solid #ffbf00;
+        }
+        .social-panel-title {
+            font-family: 'Cinzel Decorative', cursive;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ffd700; /* Gold title */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            margin-bottom: 30px;
+            border-bottom: 3px solid #ffbf00;
+            padding-bottom: 10px;
+            width: 100%;
+            text-align: center;
+        }
+        .social-content-panel {
+            background-color: rgba(0,0,0,0.2); /* Slightly transparent dark background */
+            padding: 30px;
+            border-radius: 15px;
+            width: 100%;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+            min-height: 400px; /* Ensure content area is visible */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Leaderboard Specific Styles */
+        .leaderboard-list {
+            width: 100%;
+            list-style: none;
+            padding: 0;
+        }
+        .leaderboard-item {
+            background: linear-gradient(90deg, #3a0a6e, #5a189a); /* Dark purple gradient */
+            border: 2px solid #ffbf00; /* Gold border */
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4), inset 0 0 10px rgba(255,255,255,0.1);
+            font-family: 'Merriweather', serif; /* Readable body font */
+            position: relative;
+            overflow: hidden; /* For border effects */
+        }
+        /* Royalty Border Effect - using pseudo-elements */
+        .leaderboard-item::before {
+            content: '';
+            position: absolute;
+            top: -5px; bottom: -5px; left: -5px; right: -5px;
+            background: linear-gradient(45deg, #ffd700, #ffae00, #ffd700); /* Gold gradient border */
+            z-index: -1;
+            border-radius: 12px;
+            filter: blur(3px); /* Soft glow */
+            opacity: 0.7;
+        }
+        .leaderboard-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+            transition: all 0.2s ease-in-out;
+        }
+        .leaderboard-item .rank {
+            font-family: 'Bangers', cursive;
+            font-size: 2.2rem;
+            color: #ffd700; /* Gold rank */
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.7);
+            margin-right: 15px;
+            min-width: 40px;
+            text-align: center;
+        }
+        .leaderboard-item .player-info {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+        .leaderboard-item .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #8b5cf6; /* Purple placeholder */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-right: 15px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .leaderboard-item .player-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .leaderboard-item .player-score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #34d399; /* Green for score */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Friend List Specific Styles */
+        .friend-list {
+            width: 100%;
+            list-style: none;
+            padding: 0;
+        }
+        .friend-item {
+            background-color: rgba(255,255,255,0.1); /* Lighter transparent background */
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: 'Merriweather', serif;
+            color: #e0e0e0;
+        }
+        .friend-item .player-info {
+            display: flex;
+            align-items: center;
+        }
+        .friend-item .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #facc15; /* Yellow placeholder */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-right: 15px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .friend-item .player-name {
+            font-size: 1.1rem;
+            font-weight: normal;
+        }
+        .social-input {
+            background-color: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+        }
+        .social-input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        .social-input:focus {
+            border-color: #ffd700;
+        }
+        .social-btn-primary {
+            background: linear-gradient(90deg, #ffd700, #ffae00);
+            color: #4a148c;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+        }
+        .social-btn-primary:hover {
+            background: linear-gradient(90deg, #ffae00, #ffd700);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+        }
+        .social-btn-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+        .social-btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        /* Power-ups Display Area */
+        #power-ups-display {
+            position: fixed;
+            top: 20px;
+            left: 20px; 
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 999; 
+        }
+        .power-up-item {
+            background: linear-gradient(135deg, #475569, #334155); /* Slate gradient */
+            color: white;
+            padding: 8px 15px;
+            border-radius: 25px; /* More pill-like */
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(255,255,255,0.1); /* Deeper shadow */
+            min-width: 80px; 
+            justify-content: space-between;
+            cursor: pointer; 
+            border: 2px solid #64748b; /* Subtle border */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            font-family: 'Fredoka One', cursive; /* Readable fun font */
+        }
+        .power-up-item:hover {
+            transform: translateY(-3px) scale(1.05); /* Lift and grow on hover */
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 -3px 6px rgba(255,255,255,0.15);
+        }
+        .power-up-item .icon {
+            font-size: 1.5rem; /* Larger icon */
+            margin-right: 8px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .power-up-item .count {
+            background-color: #4f46e5; /* Indigo 600 */
+            border-radius: 50%;
+            padding: 2px 8px;
+            margin-left: 8px;
+            font-size: 0.9rem; /* Slightly larger count */
+            min-width: 28px; /* Slightly larger circle */
+            height: 28px; /* Ensure height matches width for perfect circle */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* Auth/User Info Header */
+        #auth-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: #4b5563;
+            padding: 8px 15px;
+            background-color: #e5e7eb;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .dark #auth-info {
+            background-color: #374151;
+            color: #d1d5db;
+        }
+        #auth-info button {
+            background-color: #4f46e5;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #auth-info button:hover {
+            background-color: #4338ca;
+        }
+        #user-id-display {
+            font-weight: 600;
+            max-width: 150px; /* Limit width */
+            white-space: nowrap; /* Prevent wrapping */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis */
+        }
+        .social-hub-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* Achievements and Badges Styles */
+        .achievements-container {
+            width: 100%;
+            max-width: 700px;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+            color: white;
+        }
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .achievement-card {
+            background: linear-gradient(135deg, #4a148c, #6a1b9a); /* Purple gradient */
+            border: 2px solid #ffd700; /* Gold border */
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .achievement-card.unlocked {
+            filter: grayscale(0%);
+            opacity: 1;
+        }
+        .achievement-card.locked {
+            filter: grayscale(80%);
+            opacity: 0.6;
+        }
+        .achievement-card:hover {
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+        .achievement-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .achievement-name {
+            font-family: 'Cinzel Decorative', cursive;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #ffd700;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .achievement-description {
+            font-size: 0.85rem;
+            color: #e0e0e0;
+        }
+
+
+        @media (max-width: 768px) {
+            .social-nav-tabs {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .social-nav-tab {
+                flex-basis: 48%; /* Two tabs per row on small screens */
+            }
+            .social-panel-title {
+                font-size: 2rem;
+            }
+            .leaderboard-item .rank {
+                font-size: 1.8rem;
+            }
+            .leaderboard-item .player-name {
+                font-size: 1rem;
+            }
+            .leaderboard-item .player-score {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+
+    <div id="notification"></div>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div id="auth-info" class="flex items-center gap-2">
+                    <span id="auth-status">Loading...</span>
+                    <span id="user-id-display" class="hidden"></span>
+                    <button id="sign-in-btn" class="hidden">Sign In</button>
+                    <button id="play-as-guest-btn" class="hidden">Play as Guest</button>
+                </div>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg id="theme-toggle-dark-icon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-1.414 8.486a1 1 0 011.414 0l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 010-1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path></svg>
+                </button>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Formula Learning Hub</h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400 mt-2">A collaborative, AI-powered engine for mastering Math, Physics, and Engineering.</p>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="border-b border-gray-200 dark:border-gray-700 mb-6 bg-white dark:bg-gray-800 rounded-t-lg shadow-sm">
+            <nav class="flex flex-wrap -mb-px" id="tabs">
+                <a class="tab active dark:text-gray-300" data-tab="practice">Practice Problems</a>
+                <a class="tab dark:text-gray-300" data-tab="flashcards">Flashcard Library</a>
+                <a class="tab dark:text-gray-300" data-tab="concept-map">Concept Maps</a>
+                <a class="tab dark:text-gray-300" data-tab="create">Create a Problem</a>
+                <a class="tab dark:text-gray-300" data-tab="sandbox">Sandbox & OCR</a>
+                <a class="tab dark:text-gray-300" data-tab="social-hub" style="display: none;">Social Hub</a>
+                <a class="tab dark:text-gray-300" data-tab="achievements" style="display: none;">Achievements & Badges</a>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <main id="tab-contents">
+            <!-- Practice Problems Tab -->
+            <div id="practice-content" class="tab-content active">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold">Practice</h2>
+                        <div id="streak-counter" class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">Streak: 0</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                        <div>
+                            <label for="subject-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Subject</label>
+                            <select id="subject-select" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm mt-1 bg-white dark:bg-gray-700"></select>
+                        </div>
+                        <div>
+                            <label for="topic-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Topic</label>
+                            <select id="topic-select" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm mt-1 bg-white dark:bg-gray-700"></select>
+                        </div>
+                        <div>
+                            <label for="difficulty-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Difficulty</label>
+                            <select id="difficulty-select" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm mt-1 bg-white dark:bg-gray-700">
+                                <option value="adaptive">Adaptive (Default)</option>
+                                <option value="1">Difficulty 1 (Easy)</option>
+                                <option value="2">Difficulty 2 (Medium)</option>
+                                <option value="3">Difficulty 3 (Hard)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter</label>
+                            <button id="custom-filter-btn" class="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 mt-1">Custom Filter</button>
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-transparent">Action</label>
+                            <button id="next-problem-btn" class="w-full bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800 mt-1">Next Problem</button>
+                        </div>
+                    </div>
+                    <div id="active-filter-display" class="text-sm text-gray-600 dark:text-gray-400 mb-4 h-5"></div>
+                    <div class="space-y-4 border-t dark:border-gray-700 pt-6">
+                        <div id="question-image-container" class="mb-4"></div>
+                        <div id="question-text-container" class="text-lg min-h-[50px]"></div>
+                        <div id="answer-input-container"></div>
+                        <div>
+                            <label class="font-medium text-sm text-gray-700 dark:text-gray-300">Optional: Upload Image of Your Working</label>
+                            <input type="file" id="practice-problem-image-upload" accept="image/*" class="file-input-style text-gray-500 dark:text-gray-400 file:bg-indigo-50 dark:file:bg-indigo-900/50 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900 mt-1">
+                        </div>
+                        <button id="submit-answer-btn" class="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center justify-center disabled:opacity-50">
+                            <span id="submit-btn-text">Submit Answer</span>
+                            <svg id="submit-btn-spinner" class="spinner ml-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="feedback-container" class="mt-4 p-4 rounded-md" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Flashcards Tab -->
+            <div id="flashcards-content" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                        <h2 class="text-2xl font-semibold mb-4">Flashcard Library</h2>
+                        <div id="flashcard-library" class="space-y-2"></div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                        <button id="toggle-formula-form-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 text-lg font-semibold">+ Create New Formula</button>
+                        <form id="add-formula-form" class="hidden mt-4 space-y-4 border-t dark:border-gray-700 pt-4">
+                            <h2 class="text-2xl font-semibold">Add a New Formula</h2>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Contribute to the library! Your formula will be validated by AI.</p>
+                            <select id="new-formula-subject" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"></select>
+                             <input type="text" id="new-formula-topic" placeholder="Topic Name (e.g., Thermodynamics)" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700">
+                            <input type="text" id="new-formula-name" placeholder="Formula Name (e.g., Ideal Gas Law)" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700">
+                            <div>
+                                <label class="font-medium">Formula (LaTeX)</label>
+                                <div id="new-formula-input-container"></div>
+                            </div>
+                            <textarea id="new-formula-explanation" rows="2" placeholder="Brief explanation of the formula..." required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"></textarea>
+                            <textarea id="new-formula-variables" rows="3" placeholder="Variables (e.g., F = Force, m = mass)" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"></textarea>
+                            <label class="font-medium">History & Origin (Optional)</label>
+                            <textarea id="new-formula-history" rows="3" placeholder="History & Origin..." class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"></textarea>
+                            <label class="font-medium">Real-World Applications (Optional)</label>
+                            <textarea id="new-formula-applications" rows="3" placeholder="Real-World Applications..." class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"></textarea>
+                            <button type="submit" id="add-formula-btn" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center disabled:opacity-50">
+                                <span id="add-formula-btn-text">Validate & Add Formula</span>
+                                <svg id="add-formula-btn-spinner" class="spinner ml-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Concept Map Tab -->
+            <div id="concept-map-content" class="tab-content">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4">Concept Map</h2>
+                    <p class="text-gray-600 dark:text-gray-400 mb-4">Visualize the relationships between formulas. Click and drag nodes to explore. Click a node or a link to see details.</p>
+                    <div id="concept-map-container" class="concept-map-container border-gray-300 dark:border-gray-600">
+                        <svg id="concept-map-svg" class="concept-map-svg"></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Your Own Tab -->
+            <div id="create-content" class="tab-content">
+                 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4">Create a New Practice Problem</h2>
+                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Add your own question. It will be available for this session.</p>
+                    <form id="create-problem-form" class="space-y-6 border-t dark:border-gray-700 pt-6 mt-6">
+                        <div>
+                            <label class="font-medium">Related Formulas</label>
+                            <div id="problem-formulas-container" class="formula-checkbox-list dark:border-gray-600 space-y-2 mt-1"></div>
+                        </div>
+                        <textarea id="new-problem-question" rows="2" placeholder="Practice question text..." required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"></textarea>
+                        <div>
+                            <label class="font-medium">Add an Image to Question (Optional)</label>
+                            <input type="file" id="new-problem-image" accept="image/*" class="file-input-style text-gray-500 dark:text-gray-400 file:bg-indigo-50 dark:file:bg-indigo-900/50 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900 mt-1">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                             <div>
+                                <label class="font-medium">Correct Answer (LaTeX)</label>
+                                <div id="new-answer-input-container"></div>
+                            </div>
+                            <div>
+                                <label for="new-problem-difficulty" class="font-medium">Difficulty</label>
+                                <select id="new-problem-difficulty" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md mt-1 bg-white dark:bg-gray-700">
+                                    <option value="1">1 (Easy)</option>
+                                    <option value="2">2 (Medium)</option>
+                                    <option value="3">3 (Hard)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <textarea id="new-problem-analysis" rows="2" placeholder="Analysis for a wrong answer..." required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"></textarea>
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Add Problem</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Sandbox Tab -->
+            <div id="sandbox-content" class="tab-content">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                  <h2 class="text-2xl font-semibold mb-4">Sandbox, Solver & OCR</h2>
+                  <p class="text-gray-600 dark:text-gray-400 mb-4">Use this space to experiment with formulas, solve problems step-by-step, or extract math from an image.</p>
+                  <div id="sandbox-input-container"></div>
+                  <button id="solve-btn" class="mt-4 w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Show Step-by-Step Solution</button>
+                  <div id="steps-container" class="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded hidden">
+                    <h3 class="font-bold mb-2">Steps:</h3>
+                    <ul id="steps-list" class="list-disc pl-6 text-gray-700 dark:text-gray-300"></ul>
+                  </div>
+                  <div class="border-t dark:border-gray-700 mt-6 pt-6">
+                      <label class="block font-medium mb-2">Upload Handwritten Image:</label>
+                      <input type="file" id="image-upload" accept="image/*" class="file-input-style text-gray-500 dark:text-gray-400 file:bg-indigo-50 dark:file:bg-indigo-900/50 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900">
+                      <button id="ocr-btn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Extract Math from Image</button>
+                      <div id="ocr-status" class="mt-2 text-sm text-gray-500 dark:text-gray-400"></div>
+                      <div class="mt-4">
+                        <h4 class="font-semibold">Extracted Text:</h4>
+                        <pre id="ocr-output" class="bg-gray-100 dark:bg-gray-700 p-3 rounded mt-2 whitespace-pre-wrap text-sm"></pre>
+                      </div>
+                  </div>
+                </div>
+            </div>
+
+            <!-- Social Hub Tab -->
+            <div id="social-hub-content" class="tab-content" style="display: none;">
+                <div class="social-hub-content-wrapper">
+                    <div class="social-container">
+                        <h1 class="text-3xl font-bold mb-6">Social Hub</h1>
+                        <p id="social-auth-message" class="text-red-300 mb-4 text-center"></p>
+                        <p id="social-user-id-display" class="text-gray-200 mb-4 text-sm break-all font-merriweather hidden">Your User ID: <strong class="text-yellow-300"></strong> (Share this with friends!)</p>
+
+                        <div class="social-nav-tabs">
+                            <div class="social-nav-tab active" data-social-tab="global">
+                                <span class="tab-icon">🌍</span> Global
+                            </div>
+                            <div class="social-nav-tab" data-social-tab="myFriends">
+                                <span class="tab-icon">🤝</span> Friends
+                            </div>
+                            <div class="social-nav-tab" data-social-tab="friendsLeaderboard">
+                                <span class="tab-icon">🏅</span> Friends LB
+                            </div>
+                            <div class="social-nav-tab" data-social-tab="regional">
+                                <span class="tab-icon">📍</span> Regional
+                            </div>
+                        </div>
+
+                        <div id="social-tab-content-display" class="social-content-panel">
+                            <!-- Content will be rendered here by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Achievements & Badges Tab -->
+            <div id="achievements-content" class="tab-content" style="display: none;">
+                <div class="social-hub-content-wrapper">
+                    <div class="social-container">
+                        <h1 class="text-3xl font-bold mb-6">Achievements & Badges</h1>
+                        <p id="achievements-auth-message" class="text-red-300 mb-4 text-center"></p>
+                        <div id="achievements-display" class="achievements-container">
+                            <!-- Achievements will be rendered here by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="flashcard-modal" class="modal"><div class="modal-content bg-white dark:bg-gray-800"><span class="close-btn text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white">&times;</span><div id="modal-body"></div></div></div>
+    <div id="connection-modal" class="modal"><div class="modal-content bg-white dark:bg-gray-800"><span class="close-btn text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white">&times;</span><div id="connection-modal-body"></div></div></div>
+    <div id="custom-filter-modal" class="modal">
+        <div class="modal-content bg-white dark:bg-gray-800">
+            <span class="close-btn text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white">&times;</span>
+            <h2 class="text-2xl font-semibold mb-4">Custom Topic Filter</h2>
+            <div id="custom-filter-options" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            <div class="flex justify-end mt-6">
+                <button id="apply-custom-filter-btn" class="bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Power-ups Display Area -->
+    <div id="power-ups-display">
+        <!-- Streak Saver -->
+        <div id="streak-saver-power-up" class="power-up-item hidden">
+            <span class="icon">🛡️</span>
+            <span class="count" id="streak-saver-count">0</span>
+        </div>
+        <!-- Hint Token -->
+        <div id="hint-token-power-up" class="power-up-item hidden">
+            <span class="icon">🔑</span>
+            <span class="count" id="hint-token-count">0</span>
+        </div>
+    </div>
+
+
+    <script type="module">
+    // Firebase imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global Firebase instances
+    let app;
+    let db;
+    let auth;
+    let userId = null; // To store the authenticated user ID
+    let isAuthReady = false; // Flag to ensure Firestore operations wait for auth
+    let geminiApiKey = ""; // To store the fetched Gemini API key
+    let APP_ID = 'default-app-id'; // Default, will be updated from config
+
+    // --- UTILITY AND DATA ---
+    const database = {
+        // Initial in-memory data (will be merged with Firestore data)
+        physics: {
+            topics: {
+                kinematics: {
+                    formulas: { 
+                        'v-u-at': { name: 'Velocity-Time', latex: 'v = u + at', explanation: 'Final velocity equals initial velocity plus acceleration times time.', variables: 'v = final velocity\nu = initial velocity\na = acceleration\nt = time', history: 'Developed by Galileo Galilei and later formulated by Isaac Newton as part of his laws of motion.', applications: 'Predicting vehicle speeds, analyzing projectile motion, and calculating stopping distances.' } 
+                    },
+                    problems: [
+                        { subject: 'physics', topic: 'kinematics', text: "A car starts from rest and accelerates at 2 m/s². What is its velocity after 5 seconds?", answer: "10 m/s", formulaKeys: ['v-u-at'], difficulty: 1, analysis: "Use v = u + at. Since it starts from rest, u=0. So, v = 0 + (2 * 5) = 10 m/s." },
+                    ]
+                },
+                dynamics: {
+                    formulas: { 
+                        'f-ma': { name: "Newton's Second Law", latex: 'F = m \\cdot a', explanation: 'The net force on an object is equal to its mass multiplied by its acceleration.', variables: 'F = net force\nm = mass\na = acceleration', history: 'A cornerstone of classical mechanics, published by Isaac Newton in his Philosophiæ Naturalis Principia Mathematica in 1687.', applications: 'Designing safe structures, calculating rocket thrust, and understanding collisions.', connections: [{ target: 'v-u-at', type: 'Derivation', explanation: 'Force is the agent that causes acceleration (a change in velocity), linking dynamics directly to kinematics.'}] } 
+                    },
+                    problems: [
+                        { subject: 'physics', topic: 'dynamics', text: "A 500kg rocket is propelled with a force of 5000 N. Find its initial acceleration.", answer: "10 m/s^2", formulaKeys: ['f-ma'], difficulty: 1, analysis: "Rearrange F=ma to a=F/m. a = 5000N / 500kg = 10 m/s²." },
+                        { subject: 'physics', topic: 'dynamics', text: "An object with mass 15kg accelerates at 3 m/s². What is the net force acting on it?", answer: "45 N", formulaKeys: ['f-ma'], difficulty: 2, analysis: "Use F=ma directly. F = 15kg * 3m/s² = 45 N." }
+                    ]
+                }
+            }
+        },
+        math: {
+            topics: {
+                calculus1: {
+                    formulas: { 'power-rule': { name: 'Power Rule (Integration)', latex: '\\int x^n dx = \\frac{x^{n+1}}{n+1} + C', explanation: 'The integral of x to the power of n is x to the power of (n+1) divided by (n+1).', variables: 'x = variable of integration\nn = power (a constant)\nC = constant of integration', history: 'The fundamental concepts of integration were developed independently by Isaac Newton and Gottfried Wilhelm Leibniz in the 17th century.', applications: 'Finding areas under curves, calculating accumulated change, and solving physics problems involving rates.' } },
+                    problems: [
+                        { subject: 'math', topic: 'calculus1', text: "What is the indefinite integral of x³?", answer: "\\frac{x^4}{4}", formulaKeys: ['power-rule'], difficulty: 1, analysis: "Using the power rule, n=3. So the integral is x^(3+1)/(3+1) = x⁴/4. Don't forget the constant of integration, C." },
+                        { subject: 'math', topic: 'calculus1', text: "Evaluate \\int 5x^4 dx", answer: "x^5", formulaKeys: ['power-rule'], difficulty: 2, analysis: "The constant 5 can be pulled out. ∫5x⁴dx = 5 * ∫x⁴dx = 5 * (x⁵/5) = x⁵." }
+                    ]
+                }
+            }
+        },
+        'mechanical engineering': {
+            topics: {
+                statics: {
+                    formulas: {
+                        'moment': { name: 'Moment of Force', latex: 'M = F \\times d', explanation: 'Moment is the turning effect of a force, calculated as force times perpendicular distance.', variables: 'M = Moment\nF = Force\nd = perpendicular distance', history: 'The concept of moments dates back to the work of Archimedes in the 3rd century BC on levers.', applications: 'Designing bridges, analyzing lever systems, and ensuring structural stability.', connections: [{ target: 'f-ma', type: 'Conceptual Link', explanation: 'Moment is a rotational equivalent of Force. Both describe how interactions cause changes in motion (or potential for motion).'}] },
+                        'equilibrium': { name: 'Equilibrium Conditions', latex: '\\sum F_x = 0, \\sum F_y = 0, \\sum M = 0', explanation: 'For an object to be in static equilibrium, the sum of all forces in the x and y directions, and the sum of all moments, must be zero.', variables: 'ΣF = sum of forces\nΣM = sum of moments', history: 'These conditions are a direct application of Newton\'s First Law to rigid bodies.', applications: 'Ensuring buildings do not collapse, designing stable furniture, and analyzing forces on stationary objects.', connections: [{ target: 'moment', type: 'Prerequisite', explanation: 'You must understand what a Moment is to apply the sum of moments for equilibrium.'}, { target: 'f-ma', type: 'Conceptual Link', explanation: 'Equilibrium is the special case of Newton\'s Second Law where acceleration (both linear and angular) is zero.'}] }
+                    },
+                    problems: [
+                        { subject: 'mechanical engineering', topic: 'statics', text: "A 5kg mass is suspended from a 2m long beam. Calculate the moment about the fixed end.", answer: "98.1 Nm", formulaKeys: ['moment'], difficulty: 2, analysis: "Moment = Force × distance. Force = mass × gravity (5kg × 9.81m/s²). Distance = 2m. M = (5 * 9.81) * 2 = 98.1 Nm." }
+                    ]
+                },
+                thermodynamics: {
+                    formulas: { 'first-law': { name: 'First Law of Thermodynamics', latex: '\\Delta U = Q - W', explanation: 'The change in internal energy of a system is equal to the heat added to the system minus the work done by the system.', variables: 'ΔU = change in internal energy\nQ = heat added to the system\nW = work done by the system', history: 'Developed over the 19th century by many scientists, building on the principle of conservation of energy.', applications: 'Designing engines, refrigerators, and power plants.' } },
+                    problems: []
+                }
+            }
+        },
+        'electrical engineering': {
+            topics: {
+                circuits: {
+                    formulas: { 'ohms-law': { name: "Ohm's Law", latex: 'V = IR', explanation: "Voltage equals current multiplied by resistance.", variables: 'V = Voltage\nI = Current\nR = Resistance', history: 'Formulated by Georg Ohm, published in his 1827 book "Die galvanische Kette, mathematically bearbeitet".', applications: 'Designing electronic circuits, ensuring proper voltage for components, and troubleshooting electrical systems.' } },
+                    problems: [
+                         { subject: 'electrical engineering', topic: 'circuits', text: "A circuit has a resistance of 12 Ω and a current of 2 A flowing through it. What is the voltage?", answer: "24 V", formulaKeys: ['ohms-law'], difficulty: 2, analysis: "Using V=IR, V = 2A * 12Ω = 24V." }
+                    ]
+                }
+            }
+        }
+    };
+    
+    // User progress data structure (now global for direct access)
+    let userProgress = {
+        correctStreak: 0,
+        maxCorrectStreak: 0,
+        topicMastery: {}, // e.g., { 'kinematics': 5, 'dynamics': 3 }
+        unlockedBadges: [], // Moved from React state
+        highestStreak: 0, // Moved from React state
+        streakSaversCount: 0, // Moved from React state
+        hintTokensCount: 0, // Moved from React state
+        friendsList: [], // Moved from React state
+    };
+
+    const symbolsMap = { '∫': '\\int', '∑': '\\sum', 'd/dx': '\\frac{d}{dx}', '∂': '\\partial', '∇': '\\nabla', '√': '\\sqrt{}', 'θ': '\\theta', 'π': '\\pi', '∞': '\\infty', '≠': '\\neq', '≤': '\\leq', '≥': '\\geq', '·': '\\cdot', '×': '\\times', '𝑖': 'i', 'ℝ': '\\mathbb{R}', 'ℂ': '\\mathbb{C}', '|z|': '|z|' };
+    let currentProblem = {};
+    let activeCustomFilter = null;
+
+    // Social Hub Specific Global States
+    let currentSocialTab = 'global'; // 'global', 'myFriends', 'friendsLeaderboard', 'regional'
+    let leaderboard = [];
+    let friendsLeaderboard = [];
+    let friendInput = '';
+    let friendSearchStatus = '';
+
+    // --- DOM ELEMENTS ---
+    const allElements = {
+        html: document.documentElement,
+        themeToggle: document.getElementById('theme-toggle'),
+        darkIcon: document.getElementById('theme-toggle-dark-icon'),
+        lightIcon: document.getElementById('theme-toggle-light-icon'),
+        tabs: document.getElementById('tabs'),
+        subjectSelect: document.getElementById('subject-select'),
+        topicSelect: document.getElementById('topic-select'),
+        difficultySelect: document.getElementById('difficulty-select'),
+        customFilterBtn: document.getElementById('custom-filter-btn'),
+        activeFilterDisplay: document.getElementById('active-filter-display'),
+        nextProblemBtn: document.getElementById('next-problem-btn'),
+        questionImageContainer: document.getElementById('question-image-container'),
+        questionTextContainer: document.getElementById('question-text-container'),
+        submitAnswerBtn: document.getElementById('submit-answer-btn'),
+        submitBtnText: document.getElementById('submit-btn-text'),
+        submitBtnSpinner: document.getElementById('submit-btn-spinner'),
+        feedbackContainer: document.getElementById('feedback-container'),
+        streakCounter: document.getElementById('streak-counter'),
+        flashcardLibrary: document.getElementById('flashcard-library'),
+        flashcardModal: document.getElementById('flashcard-modal'),
+        connectionModal: document.getElementById('connection-modal'),
+        customFilterModal: document.getElementById('custom-filter-modal'),
+        modalBody: document.getElementById('modal-body'),
+        // Add Formula Form
+        toggleFormulaFormBtn: document.getElementById('toggle-formula-form-btn'),
+        addFormulaForm: document.getElementById('add-formula-form'),
+        // Create Problem Form
+        createProblemForm: document.getElementById('create-problem-form'),
+        // Sandbox elements
+        solveBtn: document.getElementById('solve-btn'),
+        stepsContainer: document.getElementById('steps-container'),
+        stepsList: document.getElementById('steps-list'),
+        imageUpload: document.getElementById('image-upload'),
+        ocrBtn: document.getElementById('ocr-btn'),
+        ocrOutput: document.getElementById('ocr-output'),
+        ocrStatus: document.getElementById('ocr-status'),
+        // Auth elements
+        authInfo: document.getElementById('auth-info'),
+        authStatus: document.getElementById('auth-status'),
+        userIdDisplay: document.getElementById('user-id-display'),
+        signInBtn: document.getElementById('sign-in-btn'),
+        playAsGuestBtn: document.getElementById('play-as-guest-btn'),
+        // Social Hub elements
+        socialHubTab: document.querySelector('[data-tab="social-hub"]'),
+        socialHubContent: document.getElementById('social-hub-content'),
+        socialAuthMessage: document.getElementById('social-auth-message'),
+        socialUserIdDisplay: document.getElementById('social-user-id-display'),
+        socialTabContentDisplay: document.getElementById('social-tab-content-display'),
+        socialNavTabs: document.querySelector('#social-hub-content .social-nav-tabs'),
+        // Achievements & Badges
+        achievementsTab: document.querySelector('[data-tab="achievements"]'),
+        achievementsContent: document.getElementById('achievements-content'),
+        achievementsAuthMessage: document.getElementById('achievements-auth-message'),
+        achievementsDisplay: document.getElementById('achievements-display'),
+        // Power-ups
+        streakSaverPowerUp: document.getElementById('streak-saver-power-up'),
+        streakSaverCount: document.getElementById('streak-saver-count'),
+        hintTokenPowerUp: document.getElementById('hint-token-power-up'),
+        hintTokenCount: document.getElementById('hint-token-count'),
+    };
+
+    // --- INITIALIZATION ---
+    async function initialize() {
+        console.log("Initializing application...");
+        // Function to fetch secure configurations from the backend
+        async function getSecureConfig() {
+            const PROXY_URL = 'http://localhost:3001/api/config'; // Your backend endpoint for config
+            console.log("Attempting to fetch secure config from:", PROXY_URL);
+            try {
+                const response = await fetch(PROXY_URL);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch config from backend: ${response.status} - ${errorText}`);
+                }
+                const config = await response.json();
+                console.log("Secure config fetched successfully:", config);
+                return config;
+            } catch (error) {
+                console.error("Error fetching secure config:", error);
+                showNotification("Could not load application configuration securely. Some features may not work. Check if backend server is running.", true);
+                return {}; // Return empty object or default values if backend is unreachable
+            }
+        }
+
+        const secureConfig = await getSecureConfig();
+
+        // Use __firebase_config and __initial_auth_token provided by the Canvas environment
+        // These are global variables automatically injected by the Canvas runtime.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { 
+            apiKey: secureConfig.firebaseApiKey || "", 
+            authDomain: secureConfig.firebaseAuthDomain || "formula-game-database.firebaseapp.com", 
+            projectId: secureConfig.firebaseProjectId || "formula-game-database", 
+            storageBucket: secureConfig.firebaseStorageBucket || "formula-game-database.appspot.com", 
+            messagingSenderId: secureConfig.firebaseMessagingSenderId || "609508195005", 
+            appId: secureConfig.firebaseAppId || "1:609508195005:web:95e9cf23f117ec44a715d4" 
+        };
+        APP_ID = firebaseConfig.projectId || 'default-app-id'; // Use Firebase projectId as APP_ID
+
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : ""; 
+        geminiApiKey = secureConfig.geminiApiKey || ""; 
+
+        console.log("Firebase Config:", firebaseConfig);
+        console.log("APP_ID:", APP_ID);
+        console.log("Initial Auth Token provided:", initialAuthToken ? "Yes" : "No");
+
+
+        if (firebaseConfig.apiKey && firebaseConfig.projectId) { // Check for essential config
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                console.log("Firebase initialized successfully.");
+            } catch (initError) {
+                console.error("Error initializing Firebase:", initError);
+                showNotification("Failed to initialize Firebase. Data persistence will not work. Please check your Firebase configuration.", true);
+                // Fallback to non-persistent mode
+                userId = crypto.randomUUID(); // Assign a temporary user ID for guest mode
+                isAuthReady = true; // Mark as ready to proceed with UI setup
+                updateAuthUI(null); // Show guest options
+                await refreshAllDataAndUI(); // Attempt to load local data and render UI
+                buildEnhancedInputs();
+                setupEventListeners();
+                initTheme();
+                return; // Exit initialization if Firebase fails
+            }
+
+            // Initial auth state check and listener
+            onAuthStateChanged(auth, async (user) => {
+                console.log("Auth state changed. User:", user ? user.uid : "null");
+                if (user) {
+                    userId = user.uid;
+                    isAuthReady = true;
+                    console.log("Firebase authenticated. User ID:", userId);
+                    updateAuthUI(user);
+                    await loadUserData(user.uid); // Load user-specific data
+                    setupLeaderboardListener(); // Start listening to public leaderboard
+                    renderSocialHub(); // Render social hub content
+                    renderAchievements(); // Render achievements content
+                } else {
+                    userId = null;
+                    isAuthReady = false;
+                    console.log("Firebase: No user signed in.");
+                    updateAuthUI(null);
+                    resetUserData(); // Clear local user data
+                    renderSocialHub(); // Render social hub content (with auth prompt)
+                    renderAchievements(); // Render achievements content (with auth prompt)
+                }
+                try {
+                    await refreshAllDataAndUI(); // Now that auth is ready, load data and set up UI
+                } catch (refreshError) {
+                    console.error("Error during refreshAllDataAndUI after auth state change:", refreshError);
+                    showNotification("Error loading application data after sign-in. Please refresh.", true);
+                }
+            });
+            
+            // Try to sign in with custom token first if provided, otherwise anonymously
+            if (initialAuthToken) {
+                try {
+                    console.log("Attempting custom token sign-in...");
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } catch (error) {
+                    console.error("Firebase custom token sign-in failed:", error);
+                    showNotification("Failed to sign in with custom token. Attempting anonymous sign-in.", true);
+                    await signInAnonymously(auth); // Fallback
+                }
+            } else {
+                try {
+                    console.log("Attempting anonymous sign-in...");
+                    await signInAnonymously(auth);
+                } catch (error) {
+                    console.error("Firebase anonymous sign-in failed:", error);
+                    showNotification("Failed to sign in anonymously. Some features may be limited.", true);
+                }
+            }
+
+        } else {
+            console.warn("Firebase config not found or API key/Project ID is missing. Running without persistence.");
+            showNotification("Firebase not configured. Data will not be saved.", true);
+            userId = crypto.randomUUID(); // Use a random ID if Firebase is not configured
+            isAuthReady = true; // Mark as ready even without Firebase
+            updateAuthUI(null); // Show guest options
+            await refreshAllDataAndUI(); // Proceed with UI setup without Firestore data
+        }
+
+        buildEnhancedInputs();
+        setupEventListeners();
+        initTheme();
+        console.log("Application initialization complete.");
+    }
+    
+    function setupEventListeners() {
+        allElements.tabs.addEventListener('click', e => {
+            if (e.target.classList.contains('tab')) {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+                e.target.classList.add('active');
+                const tabId = e.target.dataset.tab + '-content';
+                document.getElementById(tabId).style.display = 'block';
+                if (tabId === 'create-content') {
+                    populateFormulaCheckboxes();
+                }
+                if (tabId === 'concept-map-content') {
+                    renderConceptMap();
+                }
+                if (tabId === 'social-hub-content') {
+                    renderSocialHub(); // Re-render social hub when tab is clicked
+                }
+                if (tabId === 'achievements-content') {
+                    renderAchievements(); // Re-render achievements when tab is clicked
+                }
+            }
+        });
+        
+        allElements.subjectSelect.addEventListener('change', () => { 
+            activeCustomFilter = null;
+            allElements.activeFilterDisplay.textContent = '';
+            updateTopicDropdown(); 
+            loadProblem(); 
+        });
+
+        [allElements.topicSelect, allElements.difficultySelect].forEach(el => el.addEventListener('change', () => {
+            activeCustomFilter = null;
+            allElements.activeFilterDisplay.textContent = '';
+            loadProblem();
+        }));
+
+        allElements.nextProblemBtn.addEventListener('click', loadProblem);
+        allElements.submitAnswerBtn.addEventListener('click', checkAnswer);
+        
+        // Modal listeners
+        allElements.customFilterBtn.addEventListener('click', openCustomFilterModal);
+        allElements.customFilterModal.querySelector('.close-btn').addEventListener('click', () => allElements.customFilterModal.style.display = 'none');
+        document.getElementById('apply-custom-filter-btn').addEventListener('click', applyCustomFilter);
+        allElements.flashcardModal.querySelector('.close-btn').addEventListener('click', () => allElements.flashcardModal.style.display = 'none');
+        allElements.connectionModal.querySelector('.close-btn').addEventListener('click', () => allElements.connectionModal.style.display = 'none');
+        window.addEventListener('click', e => { 
+            if (e.target === allElements.flashcardModal) allElements.flashcardModal.style.display = 'none';
+            if (e.target === allElements.customFilterModal) allElements.customFilterModal.style.display = 'none';
+            if (e.target === allElements.connectionModal) allElements.connectionModal.style.display = 'none';
+        });
+
+        allElements.solveBtn.addEventListener('click', handleSolve);
+        allElements.ocrBtn.addEventListener('click', handleOCR);
+        allElements.toggleFormulaFormBtn.addEventListener('click', () => {
+            allElements.addFormulaForm.classList.toggle('hidden');
+        });
+        allElements.addFormulaForm.addEventListener('submit', handleAddFormula);
+        allElements.createProblemForm.addEventListener('submit', handleCreateProblem);
+        allElements.themeToggle.addEventListener('click', toggleTheme);
+        
+        // Auth buttons
+        allElements.signInBtn.addEventListener('click', signInWithGoogle);
+        allElements.playAsGuestBtn.addEventListener('click', signInAnonymouslyUser);
+
+        // Power-up click listener
+        allElements.hintTokenPowerUp.addEventListener('click', useHintToken);
+
+        // Social Hub Tab Navigation
+        allElements.socialNavTabs.addEventListener('click', e => {
+            if (e.target.closest('.social-nav-tab')) {
+                const clickedTab = e.target.closest('.social-nav-tab');
+                document.querySelectorAll('#social-hub-content .social-nav-tab').forEach(t => t.classList.remove('active'));
+                clickedTab.classList.add('active');
+                currentSocialTab = clickedTab.dataset.socialTab;
+                renderSocialTabContent();
+            }
+        });
+    }
+
+    // --- AUTHENTICATION FUNCTIONS ---
+    function updateAuthUI(user) {
+        if (user) {
+            allElements.authStatus.textContent = "Signed in as:";
+            allElements.userIdDisplay.textContent = user.uid;
+            allElements.userIdDisplay.classList.remove('hidden');
+            allElements.signInBtn.textContent = "Sign Out";
+            allElements.signInBtn.onclick = signOutUser;
+            allElements.signInBtn.classList.remove('hidden');
+            allElements.playAsGuestBtn.classList.add('hidden');
+            allElements.socialHubTab.style.display = 'flex'; // Show social tab
+            allElements.achievementsTab.style.display = 'flex'; // Show achievements tab
+        } else {
+            allElements.authStatus.textContent = "Not signed in.";
+            allElements.userIdDisplay.classList.add('hidden');
+            allElements.signInBtn.textContent = "Sign In (Google)";
+            allElements.signInBtn.onclick = signInWithGoogle;
+            allElements.signInBtn.classList.remove('hidden');
+            allElements.playAsGuestBtn.classList.remove('hidden');
+            allElements.socialHubTab.style.display = 'none'; // Hide social tab
+            allElements.achievementsTab.style.display = 'none'; // Hide achievements tab
+            // If social tab or achievements tab was active, switch to practice
+            if (document.querySelector('.tab.active')?.dataset.tab === 'social-hub' || document.querySelector('.tab.active')?.dataset.tab === 'achievements') { // Added optional chaining
+                document.querySelector('[data-tab="practice"]').click();
+            }
+        }
+    }
+
+    async function signInWithGoogle() {
+        if (!auth) {
+            showNotification("Firebase Auth not initialized.", true);
+            return;
+        }
+        const provider = new GoogleAuthProvider();
+        try {
+            await signInWithPopup(auth, provider);
+            // onAuthStateChanged will handle UI update and data loading
+            showNotification("Signed in with Google!");
+        } catch (error) {
+            console.error("Google Sign-In Error:", error);
+            showNotification(`Google Sign-In Failed: ${error.message}`, true);
+        }
+    }
+
+    async function signInAnonymouslyUser() {
+        if (!auth) {
+            showNotification("Firebase Auth not initialized.", true);
+            return;
+        }
+        try {
+            await signInAnonymously(auth);
+            // onAuthStateChanged will handle UI update and data loading
+            showNotification("Playing as Guest!");
+        } catch (error) {
+            console.error("Anonymous Sign-In Error:", error);
+            showNotification(`Anonymous Sign-In Failed: ${error.message}`, true);
+        }
+    }
+
+    async function signOutUser() {
+        if (!auth) return;
+        try {
+            await signOut(auth);
+            showNotification("Signed out.");
+            // onAuthStateChanged will handle UI update and data reset
+        } catch (error) {
+            console.error("Sign Out Error:", error);
+            showNotification(`Sign Out Failed: ${error.message}`, true);
+        }
+    }
+
+    // --- USER DATA & PERSISTENCE ---
+    async function loadUserData(uid) {
+        console.log("Loading user data for:", uid);
+        if (!db || !uid) {
+            console.warn("DB not initialized or UID missing for loadUserData. Skipping user data load.");
+            return;
+        }
+
+        const userDocRef = doc(db, `artifacts/${APP_ID}/users/${uid}/profile/data`);
+        try {
+            const docSnap = await getDoc(userDocRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                userProgress.unlockedBadges = data.unlockedBadges || [];
+                userProgress.highestStreak = data.highestStreak || 0;
+                userProgress.streakSaversCount = data.streakSaversCount || 0;
+                userProgress.hintTokensCount = data.hintTokensCount || 0;
+                userProgress.friendsList = data.friendsList || [];
+                // Current streak is volatile, loaded from local storage
+                userProgress.correctStreak = parseInt(localStorage.getItem('currentStreak')) || 0;
+                console.log("User data loaded from Firestore:", data);
+            } else {
+                // New user or no data, initialize
+                console.log("No existing user data found. Creating new profile in Firestore.");
+                await setDoc(userDocRef, {
+                    userId: uid,
+                    highestStreak: 0,
+                    unlockedBadges: [],
+                    streakSaversCount: 0,
+                    hintTokensCount: 0,
+                    friendsList: [],
+                    lastUpdated: new Date()
+                });
+                console.log("New user profile created in Firestore.");
+                // Reset userProgress to initial state for new user
+                userProgress.unlockedBadges = [];
+                userProgress.highestStreak = 0;
+                userProgress.streakSaversCount = 0;
+                userProgress.hintTokensCount = 0;
+                userProgress.friendsList = [];
+                userProgress.correctStreak = 0;
+            }
+        } catch (e) {
+            console.error("Error loading user data:", e);
+            showNotification("Could not sync data with server. Working offline.", true);
+        }
+        updateStreakDisplay();
+        updatePowerUpsDisplay();
+    }
+
+    async function saveUserData() {
+        console.log("Attempting to save user data...");
+        if (!db || !userId) {
+            console.warn("Firestore not initialized or no user ID for saveUserData. Skipping save.");
+            return;
+        }
+
+        const userDocRef = doc(db, `artifacts/${APP_ID}/users/${userId}/profile/data`);
+        try {
+            await setDoc(userDocRef, {
+                userId: userId,
+                highestStreak: userProgress.highestStreak,
+                unlockedBadges: userProgress.unlockedBadges,
+                streakSaversCount: userProgress.streakSaversCount,
+                hintTokensCount: userProgress.hintTokensCount,
+                friendsList: userProgress.friendsList,
+                lastUpdated: new Date()
+            }, { merge: true }); // Use merge to only update specified fields
+            console.log("User data saved to Firestore.");
+        } catch (e) {
+            console.error("Error saving user data:", e);
+            showNotification("Could not save data to server. Please check connection.", true);
+        }
+    }
+
+    function resetUserData() {
+        console.log("Resetting user data to default.");
+        userProgress = {
+            correctStreak: 0,
+            maxCorrectStreak: 0,
+            topicMastery: {},
+            unlockedBadges: [],
+            highestStreak: 0,
+            streakSaversCount: 0,
+            hintTokensCount: 0,
+            friendsList: [],
+        };
+        localStorage.setItem('currentStreak', 0);
+        updateStreakDisplay();
+        updatePowerUpsDisplay();
+        leaderboard = []; // Clear leaderboard too
+        friendsLeaderboard = [];
+        renderSocialHub(); // Re-render social hub after reset
+        renderAchievements(); // Re-render achievements after reset
+    }
+
+    // --- SOCIAL HUB LOGIC ---
+    function setupLeaderboardListener() {
+        console.log("Setting up global leaderboard listener...");
+        if (!db) {
+            console.warn("Firestore not initialized for leaderboard listener. Skipping.");
+            return;
+        }
+
+        const leaderboardCollectionRef = collection(db, `artifacts/${APP_ID}/public/data/leaderboard`);
+        onSnapshot(leaderboardCollectionRef, (snapshot) => {
+            leaderboard = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })).sort((a, b) => b.highestStreak - a.highestStreak); // Sort by highest streak descending
+            console.log("Global Leaderboard updated:", leaderboard);
+            if (currentSocialTab === 'global') {
+                renderSocialTabContent(); // Re-render if global tab is active
+            }
+        }, (error) => {
+            console.error("Error listening to leaderboard:", error);
+            showNotification("Could not load global leaderboard data.", true);
+        });
+    }
+
+    async function fetchFriendsLeaderboard() {
+        console.log("Fetching friends leaderboard...");
+        if (!db || !userId || userProgress.friendsList.length === 0) {
+            friendsLeaderboard = [];
+            console.log("Skipping friends leaderboard fetch: DB not ready, no user, or no friends.");
+            return;
+        }
+
+        const friendDataPromises = userProgress.friendsList.map(async (friendId) => {
+            const friendDocRef = doc(db, `artifacts/${APP_ID}/users/${friendId}/profile/data`);
+            try {
+                const docSnap = await getDoc(friendDocRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    return { id: friendId, userId: friendId, highestStreak: data.highestStreak || 0 };
+                }
+            } catch (error) {
+                console.error(`Error fetching friend ${friendId} data:`, error);
+            }
+            return null; // Return null if friend data not found or error
+        });
+
+        const resolvedFriendsData = await Promise.all(friendDataPromises);
+        friendsLeaderboard = resolvedFriendsData.filter(Boolean).sort((a, b) => b.highestStreak - a.highestStreak);
+        console.log("Friends Leaderboard updated:", friendsLeaderboard);
+        if (currentSocialTab === 'friendsLeaderboard') {
+            renderSocialTabContent(); // Re-render if friends leaderboard tab is active
+        }
+    }
+
+    async function addFriend() {
+        console.log("Attempting to add friend:", friendInput);
+        if (!db || !userId) {
+            friendSearchStatus = "Please sign in to add friends.";
+            renderSocialTabContent();
+            return;
+        }
+        if (friendInput.trim() === '') {
+            friendSearchStatus = "Friend ID cannot be empty.";
+            renderSocialTabContent();
+            return;
+        }
+        if (friendInput.trim() === userId) {
+            friendSearchStatus = "You cannot add yourself as a friend.";
+            renderSocialTabContent();
+            return;
+        }
+        if (userProgress.friendsList.includes(friendInput.trim())) {
+            friendSearchStatus = "This user is already in your friends list.";
+            renderSocialTabContent();
+            return;
+        }
+
+        friendSearchStatus = "Searching for user...";
+        renderSocialTabContent(); // Update UI with searching status
+        try {
+            const friendProfileRef = doc(db, `artifacts/${APP_ID}/users/${friendInput.trim()}/profile/data`);
+            const friendDocSnap = await getDoc(friendProfileRef);
+
+            if (friendDocSnap.exists()) {
+                userProgress.friendsList.push(friendInput.trim());
+                await saveUserData(); // Save updated friends list to Firestore
+                friendSearchStatus = `Added ${friendInput.trim()} as a friend!`;
+                friendInput = ''; // Clear input
+                await fetchFriendsLeaderboard(); // Refresh friends leaderboard
+            } else {
+                friendSearchStatus = "User not found.";
+            }
+        } catch (error) {
+            console.error("Error adding friend:", error);
+            friendSearchStatus = "Error adding friend. Please try again.";
+        }
+        renderSocialTabContent(); // Update UI with final status
+    }
+
+    function removeFriend(friendIdToRemove) {
+        console.log("Attempting to remove friend:", friendIdToRemove);
+        userProgress.friendsList = userProgress.friendsList.filter(f => f !== friendIdToRemove);
+        saveUserData(); // Save updated friends list to Firestore
+        showNotification(`Removed ${friendIdToRemove} from friends.`, false);
+        fetchFriendsLeaderboard(); // Refresh friends leaderboard
+        renderSocialTabContent(); // Re-render myFriends tab
+    }
+
+    function renderSocialHub() {
+        console.log("Rendering Social Hub. Current userId:", userId);
+        const socialHubContentDisplay = allElements.socialTabContentDisplay;
+        socialHubContentDisplay.innerHTML = ''; // Clear previous content
+
+        if (!userId) {
+            allElements.socialAuthMessage.textContent = "Please sign in to access social features.";
+            allElements.socialAuthMessage.classList.remove('hidden');
+            allElements.socialUserIdDisplay.classList.add('hidden');
+            socialHubContentDisplay.innerHTML = `
+                <p class="text-gray-400 text-center py-8">
+                    Sign in to connect with friends, view global leaderboards, and share your achievements!
+                </p>
+            `;
+            return;
+        } else {
+            allElements.socialAuthMessage.classList.add('hidden');
+            allElements.socialUserIdDisplay.classList.remove('hidden');
+            allElements.socialUserIdDisplay.querySelector('strong').textContent = userId;
+        }
+
+        renderSocialTabContent(); // Render the active social tab content
+    }
+
+    function renderSocialTabContent() {
+        console.log("Rendering Social Tab Content for:", currentSocialTab);
+        const socialTabContentDisplay = allElements.socialTabContentDisplay;
+        socialTabContentDisplay.innerHTML = ''; // Clear previous content
+
+        if (!userId) {
+            socialTabContentDisplay.innerHTML = `<p class="text-gray-400 text-center py-8">Please sign in to access social features.</p>`;
+            return;
+        }
+
+        switch (currentSocialTab) {
+            case 'global':
+                socialTabContentDisplay.innerHTML = `
+                    <h2 class="social-panel-title">Global Leaderboard</h2>
+                    <ul class="leaderboard-list" id="global-leaderboard-list">
+                        ${leaderboard.length === 0 ? `<li class="text-gray-500 text-center py-4">Loading leaderboard...</li>` :
+                            leaderboard.map((player, index) => `
+                                <li class="leaderboard-item">
+                                    <span class="rank">#${index + 1}</span>
+                                    <div class="player-info">
+                                        <div class="avatar-circle">👑</div>
+                                        <span class="player-name">${player.userId === userId ? `You (${player.userId})` : player.userId}</span>
+                                    </div>
+                                    <span class="player-score">Streak: ${player.highestStreak}</span>
+                                </li>
+                            `).join('')
+                        }
+                    </ul>
+                `;
+                break;
+            case 'myFriends':
+                socialTabContentDisplay.innerHTML = `
+                    <h2 class="social-panel-title">My Friends</h2>
+                    <div class="flex mb-4 gap-2">
+                        <input
+                            type="text"
+                            placeholder="Enter Friend's User ID"
+                            class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 social-input"
+                            id="friend-input"
+                            value="${friendInput}"
+                        />
+                        <button id="add-friend-btn" class="social-btn-primary">Add Friend</button>
+                    </div>
+                    ${friendSearchStatus ? `<p class="text-sm ${friendSearchStatus.includes('Error') || friendSearchStatus.includes('not found') ? 'text-red-500' : 'text-green-600'} mb-4">${friendSearchStatus}</p>` : ''}
+                    <ul class="friend-list" id="my-friends-list">
+                        ${userProgress.friendsList.length === 0 ? `<li class="text-gray-500 text-center py-4">No friends added yet. Add some to compete!</li>` :
+                            userProgress.friendsList.map((friendId, index) => `
+                                <li class="friend-item">
+                                    <div class="player-info">
+                                        <div class="avatar-circle">😊</div>
+                                        <span class="player-name">${friendId}</span>
+                                    </div>
+                                    <button class="social-btn-danger remove-friend-btn" data-friend-id="${friendId}">Remove</button>
+                                </li>
+                            `).join('')
+                        }
+                    </ul>
+                `;
+                document.getElementById('friend-input').addEventListener('input', (e) => {
+                    friendInput = e.target.value;
+                });
+                document.getElementById('add-friend-btn').addEventListener('click', addFriend);
+                document.querySelectorAll('.remove-friend-btn').forEach(button => {
+                    button.addEventListener('click', (e) => removeFriend(e.target.dataset.friendId));
+                });
+                break;
+            case 'friendsLeaderboard':
+                socialTabContentDisplay.innerHTML = `
+                    <h2 class="social-panel-title">Friends Leaderboard</h2>
+                    <ul class="leaderboard-list" id="friends-leaderboard-list">
+                        ${friendsLeaderboard.length === 0 ? `<li class="text-gray-500 text-center py-4">Add friends to see their scores here!</li>` :
+                            friendsLeaderboard.map((player, index) => `
+                                <li class="leaderboard-item">
+                                    <span class="rank">#${index + 1}</span>
+                                    <div class="player-info">
+                                        <div class="avatar-circle">🏆</div>
+                                        <span class="player-name">${player.userId === userId ? `You (${player.userId})` : player.userId}</span>
+                                    </div>
+                                    <span class="player-score">Streak: ${player.highestStreak}</span>
+                                </li>
+                            `).join('')
+                        }
+                    </ul>
+                `;
+                fetchFriendsLeaderboard(); // Ensure friends leaderboard is up-to-date
+                break;
+            case 'regional':
+                socialTabContentDisplay.innerHTML = `
+                    <h2 class="social-panel-title">Regional Leaderboard</h2>
+                    <p class="text-gray-500 italic text-center py-8">
+                        This feature is coming soon! Compete with players in your region.
+                        <br /> (Requires location data or regional selection.)
+                    </p>
+                `;
+                break;
+        }
+    }
+
+
+    // --- ENHANCED INPUT ---
+    function createEnhancedInput(containerId, inputId, previewId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `
+            <input id="${inputId}" type="text" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md mt-1 bg-white dark:bg-gray-700" placeholder="Enter LaTeX or use keypad...">
+            <div class="keypad">
+                ${Object.keys(symbolsMap).map(key => `<button type="button" class="keypad-button border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600">${key}</button>`).join('')}
+            </div>
+            <div class="live-preview bg-gray-100 dark:bg-gray-700" id="${previewId}">\\(\\text{Preview}\\)</div>
+        `;
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+        
+        container.querySelector('.keypad').addEventListener('click', e => {
+            if (e.target.classList.contains('keypad-button')) {
+                const sym = e.target.textContent;
+                const value = symbolsMap[sym] || sym;
+                insertAtCursor(input, value);
+                updatePreview(input, preview);
+            }
+        });
+        input.addEventListener('input', () => updatePreview(input, preview));
+    }
+
+    function insertAtCursor(input, value) {
+        const start = input.selectionStart, end = input.selectionEnd;
+        input.value = input.value.slice(0, start) + value + input.value.slice(end);
+        input.selectionStart = input.selectionEnd = start + value.length;
+        input.focus();
+    }
+
+    function updatePreview(input, preview) {
+        if (!input || !preview) return;
+        const latex = convertToLatex(input.value);
+        preview.innerHTML = `\\(${latex || '\\text{Preview}'}\\)`;
+        MathJax.typesetPromise();
+    }
+
+    
+    function buildEnhancedInputs() {
+        createEnhancedInput('answer-input-container', 'user-answer-input', 'answer-preview');
+        createEnhancedInput('sandbox-input-container', 'sandbox-input', 'sandbox-preview');
+        createEnhancedInput('new-formula-input-container', 'new-formula-input', 'new-formula-preview');
+        createEnhancedInput('new-answer-input-container', 'new-answer-input', 'new-answer-preview');
+    }
+
+    // --- UI & LOGIC ---
+    async function refreshAllDataAndUI() {
+        console.log("Refreshing all data and UI...");
+        if (!isAuthReady) {
+            console.log("Auth not ready, delaying refreshAllDataAndUI...");
+            return; // Wait for authentication to complete
+        }
+        
+        await loadFormulasFromFirestore();
+        await loadProblemsFromFirestore();
+
+        renderFlashcardLibrary();
+        populateFormulaCheckboxes();
+        populateSubjectDropdowns();
+        updateTopicDropdown();
+        loadProblem();
+        updateStreakDisplay();
+        updatePowerUpsDisplay();
+        renderAchievements(); // Ensure achievements are rendered on refresh
+        MathJax.typesetPromise(); // Ensure MathJax renders after all data is loaded and UI is built
+        console.log("All data and UI refreshed.");
+    }
+
+    function loadProblem() {
+        const subject = allElements.subjectSelect.value;
+        const topic = allElements.topicSelect.value;
+        const difficultyMode = allElements.difficultySelect.value;
+        
+        allElements.questionImageContainer.innerHTML = '';
+        let problemsInScope = [];
+
+        if (activeCustomFilter) {
+            activeCustomFilter.forEach(filter => {
+                const subjectDb = database[filter.subject];
+                if (subjectDb && subjectDb.topics[filter.topic]) {
+                    problemsInScope.push(...subjectDb.topics[filter.topic].problems);
+                }
+            });
+        } else if (subject === 'all-mixed') {
+            Object.values(database).forEach(subj => {
+                Object.values(subj.topics).forEach(top => {
+                    problemsInScope.push(...top.problems);
+                });
+            });
+        } else if (database[subject]) {
+            if (topic === 'all-mixed') {
+                 Object.values(database[subject].topics).forEach(top => {
+                    problemsInScope.push(...top.problems);
+                });
+            } else if (database[subject].topics[topic]) {
+                problemsInScope = database[subject].topics[topic].problems;
+            }
+        }
+
+        if (problemsInScope.length === 0) {
+            allElements.questionTextContainer.innerHTML = `<p class="text-gray-500">No problems available for this selection. Try creating one!</p>`;
+            currentProblem = {};
+            return;
+        }
+
+        let filteredByDifficulty;
+        if (difficultyMode === 'adaptive') {
+            let difficultyTarget = 1;
+            if (userProgress.correctStreak >= 5) difficultyTarget = 3;
+            else if (userProgress.correctStreak >= 2) difficultyTarget = 2;
+            filteredByDifficulty = problemsInScope.filter(p => p.difficulty === difficultyTarget);
+            if (filteredByDifficulty.length === 0) { 
+                filteredByDifficulty = problemsInScope;
+            }
+        } else {
+            const fixedDifficulty = parseInt(difficultyMode);
+            filteredByDifficulty = problemsInScope.filter(p => p.difficulty === fixedDifficulty);
+        }
+
+        if (!filteredByDifficulty || filteredByDifficulty.length === 0) {
+            allElements.questionTextContainer.innerHTML = `<p class="text-gray-500">No problems found for this difficulty. Try another setting or add a new problem.</p>`;
+            currentProblem = {};
+            return;
+        }
+        
+        currentProblem = filteredByDifficulty[Math.floor(Math.random() * filteredByDifficulty.length)];
+        allElements.questionTextContainer.innerHTML = `<p class="text-lg">${currentProblem.text}</p>`;
+        
+        if (currentProblem.image) {
+            allElements.questionImageContainer.innerHTML = `<img src="${currentProblem.image}" alt="Problem Image" class="max-w-full mx-auto rounded-lg shadow-md">`;
+        }
+
+        const answerInput = document.getElementById('user-answer-input');
+        if(answerInput) answerInput.value = '';
+        updatePreview(answerInput, document.getElementById('answer-preview'));
+
+        allElements.feedbackContainer.style.display = 'none';
+    }
+
+    async function checkAnswer() {
+        const userInput = document.getElementById('user-answer-input').value;
+        const userAnswer = convertToLatex(userInput); // Convert to LaTeX before checking
+
+        if (!userAnswer.trim()) {
+            showNotification("Please enter an answer.");
+            return;
+        }
+        if (!currentProblem || !currentProblem.answer) {
+             showNotification("No problem loaded to check.", true);
+             return;
+        }
+        
+        setSubmitButtonLoading(true);
+        const aiResult = await checkAnswerWithAI(userAnswer, currentProblem);
+        setSubmitButtonLoading(false);
+        
+        allElements.feedbackContainer.style.display = 'block';
+        if (aiResult.isCorrect) {
+            userProgress.correctStreak++;
+            if (userProgress.correctStreak > userProgress.maxCorrectStreak) {
+                userProgress.maxCorrectStreak = userProgress.correctStreak;
+            }
+            userProgress.highestStreak = Math.max(userProgress.highestStreak, userProgress.correctStreak); // Update highest streak
+            const topicMastery = userProgress.topicMastery[currentProblem.topic] || 0;
+            userProgress.topicMastery[currentProblem.topic] = topicMastery + 1;
+
+            allElements.feedbackContainer.className = 'mt-4 p-4 rounded-md bg-green-100 dark:bg-green-900/20 border-l-4 border-green-500 text-green-700 dark:text-green-300';
+            allElements.feedbackContainer.innerHTML = `<h3 class="font-bold">Correct!</h3><p>${aiResult.feedback}</p>`;
+        } else {
+            // Incorrect answer logic
+            if (userProgress.streakSaversCount > 0) {
+                userProgress.streakSaversCount--;
+                showNotification("Streak saved! One Streak Saver used.", false);
+            } else {
+                userProgress.correctStreak = 0; // Reset streak
+                showNotification("Incorrect answer. Streak reset.", true);
+            }
+            allElements.feedbackContainer.className = 'mt-4 p-4 rounded-md bg-red-100 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-300';
+            let issuesHtml = aiResult.issues && aiResult.issues.length > 0 ? `<ul>${aiResult.issues.map(i => `<li class="ml-4 list-disc">${i}</li>`).join('')}</ul>` : '';
+            allElements.feedbackContainer.innerHTML = `<h3 class="font-bold">Not Quite.</h3><p>${aiResult.feedback}</p>${issuesHtml}`;
+            showFlashcardModal(currentProblem.formulaKeys, currentProblem.subject, currentProblem.topic);
+        }
+        updateStreakDisplay();
+        updatePowerUpsDisplay();
+        saveUserData(); // Save progress to Firestore
+        checkAchievements();
+    }
+
+
+    function setSubmitButtonLoading(isLoading) {
+        const btn = allElements.submitAnswerBtn;
+        const text = allElements.submitBtnText;
+        const spinner = allElements.submitBtnSpinner;
+        if (isLoading) {
+            btn.disabled = true;
+            text.textContent = "Checking...";
+            spinner.classList.remove('hidden');
+        } else {
+            btn.disabled = false;
+            text.textContent = "Submit Answer";
+            spinner.classList.add('hidden');
+        }
+    }
+
+    function renderFlashcardLibrary() {
+        const libraryContainer = allElements.flashcardLibrary;
+        libraryContainer.innerHTML = '';
+        const subjects = Object.keys(database);
+        
+        subjects.forEach(subjectKey => {
+            const accordionItem = document.createElement('div');
+            accordionItem.innerHTML = `<h3 class="accordion-header dark:border-gray-700 dark:bg-gray-700/50">${subjectKey}</h3><div class="accordion-content dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-4"></div>`;
+            const contentDiv = accordionItem.querySelector('.accordion-content');
+            
+            const topics = database[subjectKey].topics;
+            for (const topicKey in topics) {
+                for (const formulaKey in topics[topicKey].formulas) {
+                    const card = topics[topicKey].formulas[formulaKey];
+                    const cardEl = document.createElement('div');
+                    cardEl.className = 'border dark:border-gray-700 p-4 rounded-lg hover:shadow-md transition bg-white dark:bg-gray-800';
+                    cardEl.innerHTML = `
+                        <h4 class="font-bold text-lg text-indigo-700 dark:text-indigo-400">${card.name}</h4>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">${topicKey}</div>
+                        <div class="formula-display bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400 text-indigo-800 dark:text-indigo-300 my-2">\\(${card.latex}\\)</div>
+                    `;
+                    cardEl.addEventListener('click', () => showFlashcardModal([formulaKey], subjectKey, topicKey));
+                    contentDiv.appendChild(cardEl);
+                }
+            }
+            libraryContainer.appendChild(accordionItem);
+        });
+
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling;
+                content.style.display = content.style.display === 'grid' ? 'none' : 'grid';
+            });
+        });
+        MathJax.typesetPromise();
+    }
+
+    function showFlashcardModal(formulaKeys, subjectKey, topicKey) {
+        allElements.modalBody.innerHTML = '';
+        formulaKeys.forEach(key => {
+            const card = database[subjectKey]?.topics[topicKey]?.formulas[key];
+            if (card) {
+                const variablesHtml = (card.variables || '').split('\n').map(v => v.trim() ? `<li>${v}</li>` : '').join('');
+                allElements.modalBody.innerHTML += `
+                    <div class="mb-6 border-b dark:border-gray-700 pb-4">
+                        <h2 class="text-2xl font-bold text-indigo-800 dark:text-indigo-300">${card.name}</h2>
+                        <div class="formula-display bg-indigo-50 dark:bg-indigo-900/20 border-indigo-500 dark:border-indigo-400 text-indigo-800 dark:text-indigo-300 my-4">\\(${card.latex}\\)</div>
+                        
+                        <h3 class="font-semibold text-lg mt-4">Explanation:</h3>
+                        <p>${card.explanation || 'Not specified.'}</p>
+                        
+                        <h3 class="font-semibold text-lg mt-4">Variables:</h3>
+                        <ul class="list-disc pl-5">${variablesHtml || '<li>Not specified.</li>'}</ul>
+
+                        <h3 class="font-semibold text-lg mt-4">History & Origin:</h3>
+                        <p>${card.history || 'Not specified.'}</p>
+
+                        <h3 class="font-semibold text-lg mt-4">Real-World Applications:</h3>
+                        <p>${card.applications || 'Not specified.'}</p>
+                    </div>`;
+            }
+        });
+        allElements.flashcardModal.style.display = 'flex'; // Use flex for centering
+        MathJax.typesetPromise();
+    }
+    
+    function populateSubjectDropdowns() {
+        const subjects = Object.keys(database);
+        allElements.subjectSelect.innerHTML = `<option value="all-mixed">All Subjects (Mixed)</option>` + subjects.map(s => `<option value="${s}" class="capitalize">${s}</option>`).join('');
+        document.getElementById('new-formula-subject').innerHTML = `<option value="" disabled selected>Select a Subject</option>` + subjects.map(s => `<option value="${s}" class="capitalize">${s}</option>`).join('');
+    }
+
+    function updateTopicDropdown() {
+        const subject = allElements.subjectSelect.value;
+        if (subject === 'all-mixed' || !database[subject]) {
+            allElements.topicSelect.innerHTML = `<option value="all-mixed">All Topics</option>`;
+            allElements.topicSelect.disabled = true;
+            return;
+        }
+        allElements.topicSelect.disabled = false;
+        const topics = Object.keys(database[subject].topics);
+        allElements.topicSelect.innerHTML = `<option value="all-mixed">All Topics (Mixed)</option>` + topics.map(m => `<option value="${m}" class="capitalize">${m}</option>`).join('');
+    }
+    
+    function showNotification(message, isError = false) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `fixed top-20 right-20 text-white p-4 rounded-lg z-2000 ${isError ? 'bg-red-600' : 'bg-gray-800'}`;
+        notification.style.display = 'block';
+        // Re-apply animation classes to restart the animation
+        notification.classList.remove('slideIn', 'fadeOut');
+        void notification.offsetWidth; // Trigger reflow
+        notification.classList.add('slideIn');
+        setTimeout(() => {
+            notification.classList.remove('slideIn');
+            notification.classList.add('fadeOut');
+            notification.addEventListener('animationend', function handler() {
+                notification.style.display = 'none';
+                notification.classList.remove('fadeOut');
+                notification.removeEventListener('animationend', handler);
+            });
+        }, 2500); // 2.5s before fadeOut starts
+    }
+
+    function updateStreakDisplay() {
+        allElements.streakCounter.textContent = `Streak: ${userProgress.correctStreak} (Highest: ${userProgress.highestStreak})`;
+    }
+
+    function updatePowerUpsDisplay() {
+        if (userProgress.streakSaversCount > 0) {
+            allElements.streakSaverPowerUp.classList.remove('hidden');
+            allElements.streakSaverCount.textContent = userProgress.streakSaversCount;
+        } else {
+            allElements.streakSaverPowerUp.classList.add('hidden');
+        }
+
+        if (userProgress.hintTokensCount > 0) {
+            allElements.hintTokenPowerUp.classList.remove('hidden');
+            allElements.hintTokenCount.textContent = userProgress.hintTokensCount;
+        } else {
+            allElements.hintTokenPowerUp.classList.add('hidden');
+        }
+    }
+
+    function useHintToken() {
+        if (userProgress.hintTokensCount > 0) {
+            userProgress.hintTokensCount--;
+            saveUserData();
+            updatePowerUpsDisplay();
+            showNotification("Hint token used! (In a real app, a hint would appear here.)", false);
+        } else {
+            showNotification("No hint tokens available!", true);
+        }
+    }
+
+    // --- ACHIEVEMENTS ---
+    const achievements = {
+        'aryabhata-approximation': {
+            name: "Aryabhata's Approximation",
+            description: "Solved 5 astronomy problems. Calculating π like it's 499 CE!",
+            icon: "🌟",
+            criteria: { type: 'topic_mastery', topic: 'kinematics', count: 5 }, // Example: link to a specific topic
+            historyFact: "Aryabhata, a prominent Indian mathematician and astronomer, accurately calculated the value of pi ($\\pi$) to four decimal places (3.1416) in the 5th century CE. His work laid foundational concepts for trigonometry and algebra."
+        },
+        'ibn-al-haytham-insight': {
+            name: "Ibn al-Haytham's Insight",
+            description: "Correctly solved 3 optics problems. You're seeing the light like an 11th century Egyptian scholar!",
+            icon: "💡",
+            criteria: { type: 'topic_mastery', topic: 'dynamics', count: 3 }, // Example: link to another topic
+            historyFact: "Ibn al-Haytham, a groundbreaking Arab polymath from the 11th century, is considered the father of optics. His revolutionary book, 'Kitāb al-Manāẓir' (Book of Optics), correctly explained vision and light, challenging ancient Greek theories."
+        },
+        'zhang-heng-seismoscope': {
+            name: "Zhang Heng's Seismoscope",
+            description: "Solved wave mechanics problems. Detecting knowledge waves like 132 CE China!",
+            icon: "🌊",
+            criteria: { type: 'topic_mastery', topic: 'statics', count: 4 }, // Example: link to another topic
+            historyFact: "Zhang Heng, a brilliant Chinese polymath of the 2nd century CE, invented the world's first seismoscope. This ingenious device could detect earthquakes from afar, demonstrating advanced understanding of mechanics and natural phenomena."
+        },
+        'streak-25': {
+            name: "Silver Streak Savant",
+            description: "Achieved a streak of 25! You're a true knowledge explorer!",
+            icon: "🥈",
+            criteria: { type: 'streak', count: 25 },
+            historyFact: "The concept of 'streak' in learning emphasizes consistent effort, a principle recognized throughout history by great scholars who dedicated themselves daily to their studies to achieve mastery."
+        },
+        'streak-50': {
+            name: "Golden Streak Guru",
+            description: "Reached an incredible streak of 50! Your focus is legendary!",
+            icon: "🥇",
+            criteria: { type: 'streak', count: 50 },
+            historyFact: "Achieving a 'golden' standard in any field often requires persistent dedication, mirroring the long-term commitment seen in historical figures who made significant scientific breakthroughs through years of diligent work."
+        },
+        'streak-100': {
+            name: "Diamond Streak Dynamo",
+            description: "Hit the monumental 100 streak! Unstoppable intellectual force!",
+            icon: "💎",
+            criteria: { type: 'streak', count: 100 },
+            historyFact: "Like a diamond, true intellectual brilliance is forged under consistent pressure and dedication over time. Reaching 100 consecutive successes reflects the relentless pursuit of knowledge that defines legendary thinkers."
+        }
+    };
+
+    const rewards = {
+        'streak-saver': {
+            name: "Streak Saver",
+            description: "Prevents your streak from resetting once.",
+            icon: "🛡️"
+        },
+        'hint-token': {
+            name: "Hint Token",
+            description: "Grants one free hint on a practice problem.",
+            icon: "🔑"
+        },
+        'xp-boost': {
+            name: "XP Boost (x2)",
+            description: "Doubles XP earned for the next 5 problems.",
+            icon: "🚀"
+        }
+    };
+
+    function awardDecolonialBadge(badgeKey) {
+        if (!achievements[badgeKey]) {
+            console.error("Badge not found:", badgeKey);
+            showNotification("Error: Badge not found.", true);
+            return;
+        }
+
+        if (userProgress.unlockedBadges.some(b => b.key === badgeKey)) {
+            return; // Silently return if already unlocked
+        }
+
+        const badge = achievements[badgeKey];
+        userProgress.unlockedBadges.push({ key: badgeKey, name: badge.name, description: badge.description, icon: badge.icon, timestamp: Date.now() });
+        saveUserData(); // Save updated badges
+        showBadgeNotification(badge);
+        showNotification(`🎉 Badge Unlocked: ${badge.name}!`);
+        renderAchievements(); // Re-render achievements to show newly unlocked badge
+    }
+
+    function collectReward(rewardKey) {
+        if (!rewards[rewardKey]) {
+            console.error("Reward not found:", rewardKey);
+            return;
+        }
+
+        const reward = rewards[rewardKey];
+        if (rewardKey === 'streak-saver') {
+            userProgress.streakSaversCount++;
+            showNotification(`Collected: ${reward.name}!`);
+        } else if (rewardKey === 'hint-token') {
+            userProgress.hintTokensCount++;
+            showNotification(`Collected: ${reward.name}!`);
+        } else {
+            // For other rewards, just notify for now
+            showNotification(`Collected: ${reward.name}!`);
+        }
+        saveUserData(); // Save updated rewards
+        updatePowerUpsDisplay();
+    }
+
+    function checkAchievements() {
+        // Check streak-based achievements
+        if (userProgress.correctStreak >= 25) {
+            awardDecolonialBadge('streak-25');
+        }
+        if (userProgress.correctStreak >= 50) {
+            awardDecolonialBadge('streak-50');
+        }
+        if (userProgress.correctStreak >= 100) {
+            awardDecolonialBadge('streak-100');
+        }
+
+        // Check topic mastery achievements
+        for (const key in achievements) {
+            const achievement = achievements[key];
+            if (achievement.criteria && achievement.criteria.type === 'topic_mastery') {
+                const { topic, count } = achievement.criteria;
+                if (userProgress.topicMastery[topic] && userProgress.topicMastery[topic] >= count) {
+                    awardDecolonialBadge(key);
+                }
+            }
+        }
+    }
+
+    function showBadgeNotification(badge) {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.id = 'badge-unlocked-notification';
+        notificationDiv.className = 'badge-notification';
+        notificationDiv.innerHTML = `
+            <p>🎉 Badge Unlocked! 🎉</p>
+            <p id="badge-name">${badge.name}</p>
+            <p id="badge-description" class="text-sm font-normal mt-2">${badge.description}</p>
+        `;
+        document.body.appendChild(notificationDiv);
+
+        notificationDiv.addEventListener('animationend', function handler() {
+            notificationDiv.remove();
+            notificationDiv.removeEventListener('animationend', handler);
+        });
+    }
+
+    function renderAchievements() {
+        console.log("Rendering Achievements. Current userId:", userId);
+        const achievementsDisplay = allElements.achievementsDisplay;
+        achievementsDisplay.innerHTML = ''; // Clear previous content
+
+        if (!userId) {
+            allElements.achievementsAuthMessage.textContent = "Please sign in to view your achievements and badges.";
+            allElements.achievementsAuthMessage.classList.remove('hidden');
+            achievementsDisplay.innerHTML = `
+                <p class="text-gray-400 text-center py-8">
+                    Sign in to track your progress and unlock amazing badges!
+                </p>
+            `;
+            return;
+        } else {
+            allElements.achievementsAuthMessage.classList.add('hidden');
+        }
+
+        const achievementKeys = Object.keys(achievements);
+        const unlockedBadgeKeys = userProgress.unlockedBadges.map(b => b.key);
+
+        const achievementGrid = document.createElement('div');
+        achievementGrid.className = 'achievement-grid';
+
+        achievementKeys.forEach(key => {
+            const achievement = achievements[key];
+            const isUnlocked = unlockedBadgeKeys.includes(key);
+            const card = document.createElement('div');
+            card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+            card.innerHTML = `
+                <div class="achievement-icon">${achievement.icon}</div>
+                <div class="achievement-name">${achievement.name}</div>
+                <div class="achievement-description">${achievement.description}</div>
+                ${isUnlocked ? `<p class="text-xs text-green-300 mt-2">Unlocked!</p>` : `<p class="text-xs text-gray-400 mt-2">Locked</p>`}
+                ${isUnlocked && achievement.historyFact ? `<p class="text-xs text-yellow-200 mt-2">Did you know? ${achievement.historyFact}</p>` : ''}
+            `;
+            achievementGrid.appendChild(card);
+        });
+        achievementsDisplay.appendChild(achievementGrid);
+        MathJax.typesetPromise(); // Render any LaTeX in history facts
+    }
+
+
+    // --- FORM HANDLERS & AI ---
+    async function handleAddFormula(e) {
+        e.preventDefault();
+        const btn = document.getElementById('add-formula-btn');
+        const textEl = document.getElementById('add-formula-btn-text');
+        const spinner = document.getElementById('add-formula-btn-spinner');
+        
+        const subject = document.getElementById('new-formula-subject').value.toLowerCase().trim();
+        const topic = document.getElementById('new-formula-topic').value.toLowerCase().trim();
+        const name = document.getElementById('new-formula-name').value;
+        const latex = document.getElementById('new-formula-input').value;
+        let explanation = document.getElementById('new-formula-explanation').value; 
+        let variables = document.getElementById('new-formula-variables').value;     
+        let history = document.getElementById('new-formula-history').value;         
+        let applications = document.getElementById('new-formula-applications').value; 
+        const key = name.toLowerCase().replace(/\s+/g, '-');
+
+        if (!subject || !topic || !name || !latex) {
+            showNotification("Please fill all required formula fields.", true);
+            return;
+        }
+
+        btn.disabled = true;
+        textEl.textContent = "Validating with AI...";
+        spinner.classList.remove('hidden');
+
+        // Pass all fields to AI for potential correction
+        const validationResult = await validateFormulaWithAI(latex, name, subject, topic, explanation, variables, history, applications);
+        
+        if (!validationResult.isValid) {
+            // If the formula itself is invalid, reject it
+            showNotification(`Formula issues: ${validationResult.feedback}`, true);
+        } else {
+            let notificationMessage = "Formula validated and added successfully!";
+            // Check for and apply AI corrections to descriptive fields
+            if (validationResult.correctedExplanation) {
+                explanation = validationResult.correctedExplanation;
+                notificationMessage += " (Explanation enhanced by AI)";
+            }
+            if (validationResult.correctedVariables) {
+                variables = validationResult.correctedVariables;
+                notificationMessage += " (Variables enhanced by AI)";
+            }
+            if (validationResult.correctedHistory) {
+                history = validationResult.correctedHistory;
+                notificationMessage += " (History enhanced by AI)";
+            }
+            if (validationResult.correctedApplications) {
+                applications = validationResult.correctedApplications;
+                notificationMessage += " (Applications enhanced by AI)";
+            }
+
+            // Prepare data for Firestore
+            const formulaData = { 
+                name, 
+                latex, 
+                explanation, 
+                variables, 
+                history, 
+                applications, 
+                subject, 
+                topic,
+                timestamp: Date.now()
+            };
+
+            try {
+                // Save to Firestore
+                const docRef = await addDoc(collection(db, `artifacts/${APP_ID}/public/data/formulas`), formulaData);
+                console.log("Formula written with ID: ", docRef.id);
+                showNotification(notificationMessage + " (Saved to database!)");
+                
+                // Update local database after successful save
+                if (!database[subject]) {
+                    database[subject] = { topics: {} };
+                }
+                if (!database[subject].topics[topic]) {
+                    database[subject].topics[topic] = { formulas: {}, problems: [] };
+                }
+                database[subject].topics[topic].formulas[key] = { ...formulaData, id: docRef.id }; // Add ID for future reference
+
+                allElements.addFormulaForm.reset();
+                allElements.addFormulaForm.classList.add('hidden');
+                await refreshAllDataAndUI(); // Re-render UI with new data
+            } catch (e) {
+                console.error("Error adding formula to Firestore: ", e);
+                showNotification("Error saving formula to database.", true);
+            }
+        }
+
+        btn.disabled = false;
+        textEl.textContent = "Validate & Add Formula";
+        spinner.classList.add('hidden');
+    }
+
+    async function handleCreateProblem(e) {
+        e.preventDefault();
+        const question = document.getElementById('new-problem-question').value;
+        const answer = document.getElementById('new-answer-input').value;
+        const analysis = document.getElementById('new-problem-analysis').value;
+        const difficulty = parseInt(document.getElementById('new-problem-difficulty').value);
+        const imageFile = document.getElementById('new-problem-image').files[0];
+
+        const selectedFormulaKeys = [];
+        const checkedBoxes = document.querySelectorAll('#problem-formulas-container input[type="checkbox"]:checked');
+        if (checkedBoxes.length === 0) {
+            showNotification("A problem must be linked to at least one formula.", true);
+            return;
+        }
+        
+        const firstFormulaKey = checkedBoxes[0].value;
+        let subject, topic;
+        for (const subj in database) {
+            for (const top in database[subj].topics) {
+                if (database[subj].topics[top].formulas[firstFormulaKey]) {
+                    subject = subj;
+                    topic = top;
+                    break;
+                }
+            }
+            if (subject) break;
+        }
+
+        checkedBoxes.forEach(checkbox => selectedFormulaKeys.push(checkbox.value));
+        
+        const newProblem = { 
+            text: question, 
+            answer, 
+            analysis, 
+            difficulty, 
+            formulaKeys: selectedFormulaKeys, 
+            subject, 
+            topic,
+            timestamp: Date.now()
+        };
+
+        const addProblemToDb = async (problem) => {
+            try {
+                const docRef = await addDoc(collection(db, `artifacts/${APP_ID}/public/data/problems`), problem);
+                console.log("Problem written with ID: ", docRef.id);
+                showNotification('Problem added successfully! (Saved to database!)');
+                
+                // Update local database after successful save
+                if (!database[problem.subject]) {
+                    database[problem.subject] = { topics: {} };
+                }
+                if (!database[problem.subject].topics[problem.topic]) {
+                    database[problem.subject].topics[problem.topic] = { formulas: {}, problems: [] };
+                }
+                database[problem.subject].topics[problem.topic].problems.push({ ...problem, id: docRef.id });
+
+                e.target.reset();
+                await refreshAllDataAndUI(); // Re-render UI with new data
+            } catch (e) {
+                console.error("Error adding problem to Firestore: ", e);
+                showNotification("Error saving problem to database.", true);
+            }
+        };
+        
+        if (imageFile) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                newProblem.image = event.target.result; // Store as Base64 for simplicity; for large images, consider Firebase Storage
+                addProblemToDb(newProblem);
+            };
+            reader.readAsDataURL(imageFile);
+        } else {
+            addProblemToDb(newProblem);
+        }
+    }
+     // --- MATH INPUT CONVERSION ---
+    function convertToLatex(input) {
+        let latex = input.trim();
+        
+        // Handle sqrt()
+        latex = latex.replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}');
+
+        // Handle fractions with parentheses: (a)/(b) or a/(b) or (a)/b
+        latex = latex.replace(/(?:\(([^)]+)\)|([a-zA-Z0-9\.]+))\s*\/\s*(?:\(([^)]+)\)|([a-zA-Z0-9\.]+))/g, (match, numP, num, denP, den) => {
+            const numerator = numP || num;
+            const denominator = denP || den;
+            return `\\frac{${numerator}}{${denominator}}`;
+        });
+        
+        // Handle simple exponents after the fraction conversion
+        latex = latex.replace(/(\w|\d|\))\^(\w+|\d+)/g, '$1^{$2}');
+        latex = latex.replace(/(\w|\d|\))\^\(([^)]+)\)/g, '$1^{$2}');
+
+        // Handle multiplication and add spaces around operators
+        latex = latex.replace(/\*/g, ' \\times ').replace(/([+\-])/g, ' $1 ').replace(/\s+/g, ' ').trim();
+
+        return latex;
+    }
+
+   
+    // --- AI HELPERS ---
+async function callGeminiAPI(prompt, schema = null) {
+  // This URL points to your new backend server.
+  // For local testing, it's http://localhost:3001.
+  // When you deploy your site, you will change this to your live server's URL.
+  const PROXY_URL = 'http://localhost:3001/api/call-gemini';
+
+  try {
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, schema, apiKey: geminiApiKey }) // Send the prompt and the fetched API key to your backend
+    });
+
+    if (!response.ok) {
+      throw new Error(`Proxy request failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data; // Use the data sent back from your server
+  } catch (error) {
+    console.error("AI API call via proxy failed:", error);
+    showNotification("AI service is not available. Please check the backend server.", true);
+    throw error;
+  }
+}
+
+    async function checkAnswerWithAI(userAnswer, problem) {
+        const { subject, topic, formulaKeys, text, answer } = problem;
+        const formulas = formulaKeys.map(key => {
+            return database[subject]?.topics[topic]?.formulas[key]?.latex || '';
+        }).join(', ');
+
+        const prompt = `You are a ${subject} expert evaluating a student's answer. Perform these checks:
+1. Mathematical equivalence with correct answer.
+2. Unit consistency (if applicable, e.g., N/kg is equivalent to m/s^2).
+3. Dimensional analysis (for physics/engineering).
+4. Domain-specific validity.
+
+Problem Context:
+- Subject: ${subject}
+- Topic: ${topic}
+- Related Formulas: ${formulas}
+- Problem: "${text}"
+
+Correct Answer: "${answer}"
+Student Answer: "${userAnswer}"
+
+Respond ONLY with JSON in this format:
+{
+    "isCorrect": boolean,
+    "feedback": "brief explanation for the student",
+    "issues": ["list of any specific issues found, like 'Incorrect units' or 'Calculation error'"]
+}`;
+        
+        const schema = {
+            type: "OBJECT",
+            properties: {
+                isCorrect: { type: "BOOLEAN" },
+                feedback: { type: "STRING" },
+                issues: { type: "ARRAY", items: { type: "STRING" } }
+            },
+            required: ["isCorrect", "feedback", "issues"]
+        };
+
+        try {
+            const responseText = await callGeminiAPI(prompt, schema);
+            return JSON.parse(responseText);
+        } catch (error) {
+            console.error("AI answer check failed:", error);
+            const isSimpleMatch = userAnswer.replace(/\s+/g, '') === answer.replace(/\s+/g, '');
+            return {
+                isCorrect: isSimpleMatch,
+                feedback: isSimpleMatch ? "Correct." : "Could not verify with AI. Simple text comparison failed.",
+                issues: ["AI check failed"]
+            };
+        }
+    }
+
+    async function validateFormulaWithAI(formulaText, name, subject, topic, explanation, variables, history, applications) {
+        const prompt = `As a ${subject} expert, validate this formula and its associated details. If any of the descriptive fields (Explanation, Variables, History & Origin, Real-World Applications) are missing, too short, or contain placeholder/irrelevant text, provide a complete and accurate version for that specific field.
+
+Name: ${name}
+Subject: ${subject}
+Topic: ${topic}
+Formula: ${formulaText}
+Explanation: ${explanation}
+Variables: ${variables}
+History & Origin: ${history}
+Real-World Applications: ${applications}
+
+Perform these checks:
+1. Mathematical syntax correctness of the Formula.
+2. Dimensional consistency of the Formula.
+3. Theoretical validity of the Formula in the subject of ${subject}.
+4. Common notation usage in the Formula.
+
+Respond ONLY with JSON in this format:
+{
+    "isValid": boolean,
+    "feedback": "brief explanation of why it is valid or invalid, or what was corrected",
+    "issues": ["list of any specific issues found", "e.g., 'Invalid LaTeX'", "'Explanation too short'"],
+    "correctedExplanation": "AI-generated explanation if original was poor/missing",
+    "correctedVariables": "AI-generated variables if original was poor/missing",
+    "correctedHistory": "AI-generated history if original was poor/missing",
+    "correctedApplications": "AI-generated applications if original was poor/missing"
+}`;
+
+        const schema = {
+            type: "OBJECT",
+            properties: {
+                isValid: { type: "BOOLEAN" },
+                feedback: { type: "STRING" },
+                issues: { type: "ARRAY", items: { type: "STRING" } },
+                correctedExplanation: { type: "STRING" },
+                correctedVariables: { type: "STRING" },
+                correctedHistory: { type: "STRING" },
+                correctedApplications: { type: "STRING" }
+            },
+            required: ["isValid", "feedback", "issues"] // Corrected fields are optional
+        };
+
+        try {
+            const responseText = await callGeminiAPI(prompt, schema);
+            return JSON.parse(responseText);
+        } catch (error) {
+            console.error("AI formula validation failed:", error);
+            showNotification("AI validation failed - allowing formula by default.", true);
+            return { isValid: true, feedback: "AI check failed, allowed by default.", issues: [] };
+        }
+    }
+    
+    // --- FIRESTORE DATA LOADING ---
+    async function loadFormulasFromFirestore() {
+        console.log("Loading formulas from Firestore...");
+        if (!db || !isAuthReady) {
+            console.warn("Firestore not ready or auth not complete for formulas load. Skipping.");
+            return;
+        }
+
+        try {
+            const formulasColRef = collection(db, `artifacts/${APP_ID}/public/data/formulas`);
+            const q = query(formulasColRef); // No orderBy to avoid index issues
+
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const formulaKey = data.name.toLowerCase().replace(/\s+/g, '-');
+                const subject = data.subject.toLowerCase();
+                const topic = data.topic.toLowerCase();
+
+                if (!database[subject]) {
+                    database[subject] = { topics: {} };
+                }
+                if (!database[subject].topics[topic]) {
+                    database[subject].topics[topic] = { formulas: {}, problems: [] };
+                }
+                // Add to local database if not already present (to avoid duplicates from initial data)
+                if (!database[subject].topics[topic].formulas[formulaKey]) {
+                    database[subject].topics[topic].formulas[formulaKey] = { ...data, id: doc.id };
+                }
+            });
+            console.log("Formulas loaded from Firestore.");
+        } catch (error) {
+            console.error("Error loading formulas from Firestore:", error);
+            showNotification("Error loading formulas from database.", true);
+        }
+    }
+
+    async function loadProblemsFromFirestore() {
+        console.log("Loading problems from Firestore...");
+        if (!db || !isAuthReady) {
+            console.warn("Firestore not ready or auth not complete for problems load. Skipping.");
+            return;
+        }
+
+        try {
+            const problemsColRef = collection(db, `artifacts/${APP_ID}/public/data/problems`);
+            const q = query(problemsColRef); // No orderBy to avoid index issues
+
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const subject = data.subject.toLowerCase();
+                const topic = data.topic.toLowerCase();
+
+                if (!database[subject]) {
+                    database[subject] = { topics: {} };
+                }
+                if (!database[subject].topics[topic]) {
+                    database[subject].topics[topic] = { formulas: {}, problems: [] };
+                }
+                // Add to local database if not already present
+                const problemExists = database[subject].topics[topic].problems.some(p => p.id === doc.id);
+                if (!problemExists) {
+                    database[subject].topics[topic].problems.push({ ...data, id: doc.id });
+                }
+            });
+            console.log("Problems loaded from Firestore.");
+        } catch (error) {
+            console.error("Error loading problems from Firestore:", error);
+            showNotification("Error loading problems from database.", true);
+        }
+    }
+
+    // --- OTHER HANDLERS ---
+    function handleSolve() {
+        const expr = document.getElementById('sandbox-input').value.trim();
+        if (!expr) return;
+        allElements.stepsList.innerHTML = `
+            <li>Step 1: Parsing expression \\(${expr}\\)</li>
+            <li>Step 2: Identifying operation type (e.g., Integration, Simplification).</li>
+            <li>Step 3: Applying relevant mathematical rules.</li>
+            <li>Step 4: Formatting final result.</li>
+            <li><strong>Result:</strong> [Connection to a real symbolic math engine needed]</li>
+        `;
+        allElements.stepsContainer.classList.remove("hidden");
+        MathJax.typesetPromise();
+    }
+
+    function handleOCR() {
+        const file = allElements.imageUpload.files[0];
+        if (!file) { showNotification("Please upload an image first."); return; }
+        allElements.ocrStatus.textContent = 'Processing image...';
+        allElements.ocrBtn.disabled = true;
+
+        Tesseract.recognize(file, 'eng', { logger: m => console.log(m) })
+            .then(({ data: { text } }) => {
+                allElements.ocrOutput.textContent = text;
+                const sandboxInput = document.getElementById('sandbox-input');
+                sandboxInput.value = text.trim().replace(/\n/g, ' ');
+                updatePreview(sandboxInput, document.getElementById('sandbox-preview'));
+                allElements.ocrStatus.textContent = 'Extraction complete!';
+            })
+            .catch(err => {
+                allElements.ocrOutput.textContent = "Error: " + err.message;
+                allElements.ocrStatus.textContent = 'An error occurred.';
+            })
+            .finally(() => {
+                allElements.ocrBtn.disabled = false;
+            });
+    }
+
+    function populateFormulaCheckboxes() {
+        const container = document.getElementById('problem-formulas-container');
+        container.innerHTML = '';
+        let hasFormulas = false;
+        for (const subjectKey in database) {
+            for (const topicKey in database[subjectKey].topics) {
+                for (const formulaKey in database[subjectKey].topics[topicKey].formulas) {
+                    hasFormulas = true;
+                    const formula = database[subjectKey].topics[topicKey].formulas[formulaKey];
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center';
+                    div.innerHTML = `
+                        <input type="checkbox" id="problem-formula-check-${formulaKey}" value="${formulaKey}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="problem-formula-check-${formulaKey}" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                            ${formula.name} <span class="text-xs text-gray-500 dark:text-gray-400">(${subjectKey}/${topicKey})</span>
+                        </label>
+                    `;
+                    container.appendChild(div);
+                }
+            }
+        }
+        if (!hasFormulas) {
+            container.innerHTML = '<p class="text-gray-500 dark:text-gray-400">No formulas in library. Add one in the "Flashcard Library" tab first.</p>';
+        }
+    }
+
+    function openCustomFilterModal() {
+        const container = document.getElementById('custom-filter-options');
+        container.innerHTML = '';
+        for (const subjectKey in database) {
+            const subjectDiv = document.createElement('div');
+            subjectDiv.className = 'border dark:border-gray-700 rounded-lg p-3';
+            let topicHtml = '';
+            for (const topicKey in database[subjectKey].topics) {
+                topicHtml += `
+                    <div class="flex items-center">
+                        <input type="checkbox" id="filter-check-${subjectKey}-${topicKey}" data-subject="${subjectKey}" data-topic="${topicKey}" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="filter-check-${subjectKey}-${topicKey}" class="ml-2 block text-sm capitalize">${topicKey}</label>
+                    </div>
+                `;
+            }
+            subjectDiv.innerHTML = `<h4 class="font-semibold capitalize border-b dark:border-gray-600 pb-2 mb-2">${subjectKey}</h4><div class="space-y-1">${topicHtml}</div>`;
+            container.appendChild(subjectDiv);
+        }
+        allElements.customFilterModal.style.display = 'flex'; // Use flex for centering
+    }
+
+    function applyCustomFilter() {
+        activeCustomFilter = [];
+        const checkedBoxes = document.querySelectorAll('#custom-filter-options input:checked');
+        checkedBoxes.forEach(box => {
+            activeCustomFilter.push({
+                subject: box.dataset.subject,
+                topic: box.dataset.topic
+            });
+        });
+        if (activeCustomFilter.length > 0) {
+            allElements.activeFilterDisplay.textContent = `Active Filter: ${activeCustomFilter.length} topic(s) selected.`;
+        } else {
+            allElements.activeFilterDisplay.textContent = '';
+            activeCustomFilter = null;
+        }
+        allElements.customFilterModal.style.display = 'none';
+        loadProblem();
+    }
+    
+    // --- THEME ---
+    function initTheme() {
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            allElements.darkIcon.classList.remove('hidden');
+            allElements.lightIcon.classList.add('hidden');
+        } else {
+            document.documentElement.classList.remove('dark');
+            allElements.lightIcon.classList.remove('hidden');
+            allElements.darkIcon.classList.add('hidden');
+        }
+    }
+
+    function toggleTheme() {
+        document.documentElement.classList.toggle('dark');
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        allElements.darkIcon.classList.toggle('hidden', !isDarkMode);
+        allElements.lightIcon.classList.toggle('hidden', isDarkMode);
+    }
+
+    // --- CONCEPT MAP ---
+    function generateConceptMapData() {
+        const nodes = [];
+        const links = [];
+        const nodeIds = new Set();
+        
+        for (const subject in database) {
+            for (const topic in database[subject].topics) {
+                for (const formulaKey in database[subject].topics[topic].formulas) {
+                    const formula = database[subject].topics[topic].formulas[formulaKey];
+                    const nodeId = formulaKey;
+                    
+                    if (!nodeIds.has(nodeId)) {
+                        nodes.push({
+                            id: nodeId,
+                            name: formula.name,
+                            subject: subject,
+                            topic: topic,
+                            formulaKey: formulaKey,
+                            group: subject 
+                        });
+                        nodeIds.add(nodeId);
+                    }
+                }
+            }
+        }
+        
+        const linkMap = new Map();
+        for (const subject in database) {
+            for (const topic in database[subject].topics) {
+                for (const formulaKey in database[subject].topics[topic].formulas) {
+                    const formula = database[subject].topics[topic].formulas[formulaKey];
+                    const sourceId = formulaKey;
+                    
+                    if (formula.connections && formula.connections.length > 0) {
+                        formula.connections.forEach(conn => {
+                            if (nodeIds.has(conn.target)) {
+                                const linkKey = [sourceId, conn.target].sort().join('-');
+                                if (!linkMap.has(linkKey)) {
+                                    linkMap.set(linkKey, {
+                                        source: sourceId,
+                                        target: conn.target,
+                                        connections: []
+                                    });
+                                }
+                                linkMap.get(linkKey).connections.push({
+                                    type: conn.type,
+                                    explanation: conn.explanation
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        
+        return { nodes, links: Array.from(linkMap.values()) };
+    }
+
+    function renderConceptMap() {
+        const container = document.getElementById('concept-map-svg');
+        container.innerHTML = ''; 
+        
+        const { nodes, links } = generateConceptMapData();
+        
+        if (nodes.length === 0) {
+            container.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="currentColor">No formulas with relationships found</text>';
+            return;
+        }
+        
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+        
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+            .force("charge", d3.forceManyBody().strength(-400))
+            .force("x", d3.forceX(width / 2).strength(0.05))
+            .force("y", d3.forceY(height / 2).strength(0.05))
+            .force("collision", d3.forceCollide().radius(40));
+        
+        const svgRoot = d3.select(container);
+        const g = svgRoot.append("g");
+
+        svgRoot.call(d3.zoom().on("zoom", (event) => {
+           g.attr("transform", event.transform);
+        }));
+
+        const link = g.append("g")
+            .selectAll("line")
+            .data(links)
+            .join("line")
+            .attr("class", "graph-link")
+            .attr("stroke", "#999")
+            .on("click", (event, d) => {
+                showConnectionModal(d);
+            });
+        
+        const node = g.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .join("g")
+            .attr("class", "graph-node")
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+        
+        node.append("circle")
+            .attr("r", 20)
+            .attr("fill", d => color(d.group))
+            .style("stroke", "#fff")
+            .on("click", (event, d) => {
+                showFlashcardModal([d.formulaKey], d.subject, d.topic);
+            });
+        
+        node.append("text")
+            .attr("dy", 30)
+            .attr("text-anchor", "middle")
+            .text(d => d.name)
+            .attr("fill", document.documentElement.classList.contains('dark') ? "#fff" : "#000")
+            .style("pointer-events", "none")
+            .style("font-size", "12px");
+        
+        node.append("title")
+            .text(d => `${d.name}\n${d.subject} / ${d.topic}`);
+        
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+            
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    }
+
+    function showConnectionModal(connectionData) {
+        const modalBody = document.getElementById('connection-modal-body');
+        let currentIndex = 0;
+        
+        function renderConnection(index) {
+            const connection = connectionData.connections[index];
+            const sourceNode = findFormulaByKey(connectionData.source.id);
+            const targetNode = findFormulaByKey(connectionData.target.id);
+
+            modalBody.innerHTML = `
+                <h2 class="text-2xl font-bold text-indigo-800 dark:text-indigo-300 mb-4">Connection Details</h2>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div class="font-semibold">${sourceNode.name}</div>
+                    <div class="font-semibold">${targetNode.name}</div>
+                </div>
+                <div class="flex justify-center items-center my-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                </div>
+                <div class="border-t dark:border-gray-700 pt-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-semibold text-lg">Relationship Type: <span class="capitalize font-normal">${connection.type || 'General'}</span></h3>
+                        <span class="text-sm text-gray-500">${index + 1} of ${connectionData.connections.length}</span>
+                    </div>
+                    <h4 class="font-semibold mt-2">Explanation:</h4>
+                    <p class="text-gray-600 dark:text-gray-400">${connection.explanation || 'No details provided.'}</p>
+                </div>
+                <div class="flex justify-between mt-6">
+                    <button id="prev-connection-btn" class="bg-gray-200 dark:bg-gray-600 px-4 py-2 rounded-md ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Previous</button>
+                    <button id="next-connection-btn" class="bg-gray-200 dark:bg-gray-600 px-4 py-2 rounded-md ${index === connectionData.connections.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}">Next</button>
+                </div>
+            `;
+
+            document.getElementById('prev-connection-btn').addEventListener('click', () => {
+                if(currentIndex > 0) {
+                    currentIndex--;
+                    renderConnection(currentIndex);
+                }
+            });
+            document.getElementById('next-connection-btn').addEventListener('click', () => {
+                if(currentIndex < connectionData.connections.length - 1) {
+                    currentIndex++;
+                    renderConnection(currentIndex);
+                }
+            });
+        }
+
+        renderConnection(currentIndex);
+        allElements.connectionModal.style.display = 'flex'; // Use flex for centering
+    }
+    
+    function findFormulaByKey(key) {
+        for (const subject in database) {
+            for (const topic in database[subject].topics) {
+                if (database[subject].topics[topic].formulas[key]) {
+                    return database[subject].topics[topic].formulas[key];
+                }
+            }
+        }
+        return null;
+    }
+
+
+    // --- KICK IT OFF ---
+    initialize();
+    </script>
+</body>
+</html>
