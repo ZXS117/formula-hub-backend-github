@@ -755,8 +755,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, query, where, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // Global Firebase instances
+	
+	
     let app;
     let db;
     let auth;
@@ -915,135 +915,86 @@
         hintTokenCount: document.getElementById('hint-token-count'),
     };
 
-    // --- INITIALIZATION ---
-    async function initialize() {
+// --- INITIALIZATION ---
+async function initialize() {
         console.log("Initializing application...");
-        // Function to fetch secure configurations from the backend
+
+        // This function now correctly waits for the config before continuing
         async function getSecureConfig() {
-            const PROXY_URL = 'http://localhost:3001/api/config'; // Your backend endpoint for config
+            const PROXY_URL = 'http://localhost:3001/api/config';
             console.log("Attempting to fetch secure config from:", PROXY_URL);
             try {
                 const response = await fetch(PROXY_URL);
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Failed to fetch config from backend: ${response.status} - ${errorText}`);
+                    throw new Error(`Failed to fetch config from backend: ${response.statusText}`);
                 }
                 const config = await response.json();
                 console.log("Secure config fetched successfully:", config);
-                return config;
+                if (!config.success || !config.data) {
+                    throw new Error("Backend config response is malformed.");
+                }
+                return config.data;
             } catch (error) {
                 console.error("Error fetching secure config:", error);
-                showNotification("Could not load application configuration securely. Some features may not work. Check if backend server is running.", true);
-                return {}; // Return empty object or default values if backend is unreachable
+                showNotification("Could not load application configuration. Is the backend server running?", true);
+                return {}; // Return empty object on failure
             }
         }
 
         const secureConfig = await getSecureConfig();
 
-        // Use __firebase_config and __initial_auth_token provided by the Canvas environment
-        // These are global variables automatically injected by the Canvas runtime.
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { 
-            apiKey: secureConfig.firebaseApiKey || "", 
-            authDomain: secureConfig.firebaseAuthDomain || "formula-game-database.firebaseapp.com", 
-            projectId: secureConfig.firebaseProjectId || "formula-game-database", 
-            storageBucket: secureConfig.firebaseStorageBucket || "formula-game-database.appspot.com", 
-            messagingSenderId: secureConfig.firebaseMessagingSenderId || "609508195005", 
-            appId: secureConfig.firebaseAppId || "1:609508195005:web:95e9cf23f117ec44a715d4" 
+        const firebaseConfig = {
+            apiKey: secureConfig.firebaseApiKey,
+            authDomain: secureConfig.firebaseAuthDomain,
+            projectId: secureConfig.firebaseProjectId,
+            storageBucket: secureConfig.firebaseStorageBucket,
+            messagingSenderId: secureConfig.firebaseMessagingSenderId,
+            appId: secureConfig.firebaseAppId
         };
-        APP_ID = firebaseConfig.projectId || 'default-app-id'; // Use Firebase projectId as APP_ID
+        APP_ID = firebaseConfig.projectId || 'default-app-id';
+        geminiApiKey = secureConfig.geminiApiKey || "";
 
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : ""; 
-        geminiApiKey = secureConfig.geminiApiKey || ""; 
+        console.log("Using Firebase Config:", firebaseConfig);
 
-        console.log("Firebase Config:", firebaseConfig);
-        console.log("APP_ID:", APP_ID);
-        console.log("Initial Auth Token provided:", initialAuthToken ? "Yes" : "No");
-
-
-        if (firebaseConfig.apiKey && firebaseConfig.projectId) { // Check for essential config
+        if (firebaseConfig.apiKey && firebaseConfig.projectId) {
             try {
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 console.log("Firebase initialized successfully.");
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        isAuthReady = true;
+                        console.log("Firebase authenticated. User ID:", userId);
+                        updateAuthUI(user);
+                        await refreshAllDataAndUI();
+                    } else {
+                        console.log("No user signed in, attempting anonymous sign-in.");
+                        try {
+                            await signInAnonymously(auth);
+                            // The onAuthStateChanged listener will run again with the new anonymous user.
+                        } catch (anonError) {
+                             console.error("Anonymous sign-in failed:", anonError);
+                             showNotification("Could not sign in as guest.", true);
+                        }
+                    }
+                });
             } catch (initError) {
-                console.error("Error initializing Firebase:", initError);
-                showNotification("Failed to initialize Firebase. Data persistence will not work. Please check your Firebase configuration.", true);
-                // Fallback to non-persistent mode
-                userId = crypto.randomUUID(); // Assign a temporary user ID for guest mode
-                isAuthReady = true; // Mark as ready to proceed with UI setup
-                updateAuthUI(null); // Show guest options
-                await refreshAllDataAndUI(); // Attempt to load local data and render UI
-                buildEnhancedInputs();
-                setupEventListeners();
-                initTheme();
-                return; // Exit initialization if Firebase fails
+                console.error("Firebase App initialization FAILED:", initError);
+                showNotification("Firebase initialization failed. Data will not be saved.", true);
             }
-
-            // Initial auth state check and listener
-            onAuthStateChanged(auth, async (user) => {
-                console.log("Auth state changed. User:", user ? user.uid : "null");
-                if (user) {
-                    userId = user.uid;
-                    isAuthReady = true;
-                    console.log("Firebase authenticated. User ID:", userId);
-                    updateAuthUI(user);
-                    await loadUserData(user.uid); // Load user-specific data
-                    setupLeaderboardListener(); // Start listening to public leaderboard
-                    renderSocialHub(); // Render social hub content
-                    renderAchievements(); // Render achievements content
-                } else {
-                    userId = null;
-                    isAuthReady = false;
-                    console.log("Firebase: No user signed in.");
-                    updateAuthUI(null);
-                    resetUserData(); // Clear local user data
-                    renderSocialHub(); // Render social hub content (with auth prompt)
-                    renderAchievements(); // Render achievements content (with auth prompt)
-                }
-                try {
-                    await refreshAllDataAndUI(); // Now that auth is ready, load data and set up UI
-                } catch (refreshError) {
-                    console.error("Error during refreshAllDataAndUI after auth state change:", refreshError);
-                    showNotification("Error loading application data after sign-in. Please refresh.", true);
-                }
-            });
-            
-            // Try to sign in with custom token first if provided, otherwise anonymously
-            if (initialAuthToken) {
-                try {
-                    console.log("Attempting custom token sign-in...");
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } catch (error) {
-                    console.error("Firebase custom token sign-in failed:", error);
-                    showNotification("Failed to sign in with custom token. Attempting anonymous sign-in.", true);
-                    await signInAnonymously(auth); // Fallback
-                }
-            } else {
-                try {
-                    console.log("Attempting anonymous sign-in...");
-                    await signInAnonymously(auth);
-                } catch (error) {
-                    console.error("Firebase anonymous sign-in failed:", error);
-                    showNotification("Failed to sign in anonymously. Some features may be limited.", true);
-                }
-            }
-
         } else {
             console.warn("Firebase config not found or API key/Project ID is missing. Running without persistence.");
             showNotification("Firebase not configured. Data will not be saved.", true);
-            userId = crypto.randomUUID(); // Use a random ID if Firebase is not configured
-            isAuthReady = true; // Mark as ready even without Firebase
-            updateAuthUI(null); // Show guest options
-            await refreshAllDataAndUI(); // Proceed with UI setup without Firestore data
         }
 
         buildEnhancedInputs();
         setupEventListeners();
         initTheme();
-        console.log("Application initialization complete.");
     }
-    
+
     function setupEventListeners() {
         allElements.tabs.addEventListener('click', e => {
             if (e.target.classList.contains('tab')) {
@@ -1066,12 +1017,12 @@
                 }
             }
         });
-        
-        allElements.subjectSelect.addEventListener('change', () => { 
+
+        allElements.subjectSelect.addEventListener('change', () => {
             activeCustomFilter = null;
             allElements.activeFilterDisplay.textContent = '';
-            updateTopicDropdown(); 
-            loadProblem(); 
+            updateTopicDropdown();
+            loadProblem();
         });
 
         [allElements.topicSelect, allElements.difficultySelect].forEach(el => el.addEventListener('change', () => {
@@ -1082,14 +1033,14 @@
 
         allElements.nextProblemBtn.addEventListener('click', loadProblem);
         allElements.submitAnswerBtn.addEventListener('click', checkAnswer);
-        
+
         // Modal listeners
         allElements.customFilterBtn.addEventListener('click', openCustomFilterModal);
         allElements.customFilterModal.querySelector('.close-btn').addEventListener('click', () => allElements.customFilterModal.style.display = 'none');
         document.getElementById('apply-custom-filter-btn').addEventListener('click', applyCustomFilter);
         allElements.flashcardModal.querySelector('.close-btn').addEventListener('click', () => allElements.flashcardModal.style.display = 'none');
         allElements.connectionModal.querySelector('.close-btn').addEventListener('click', () => allElements.connectionModal.style.display = 'none');
-        window.addEventListener('click', e => { 
+        window.addEventListener('click', e => {
             if (e.target === allElements.flashcardModal) allElements.flashcardModal.style.display = 'none';
             if (e.target === allElements.customFilterModal) allElements.customFilterModal.style.display = 'none';
             if (e.target === allElements.connectionModal) allElements.connectionModal.style.display = 'none';
@@ -1103,7 +1054,7 @@
         allElements.addFormulaForm.addEventListener('submit', handleAddFormula);
         allElements.createProblemForm.addEventListener('submit', handleCreateProblem);
         allElements.themeToggle.addEventListener('click', toggleTheme);
-        
+
         // Auth buttons
         allElements.signInBtn.addEventListener('click', signInWithGoogle);
         allElements.playAsGuestBtn.addEventListener('click', signInAnonymouslyUser);
@@ -1125,7 +1076,8 @@
 
     // --- AUTHENTICATION FUNCTIONS ---
     function updateAuthUI(user) {
-        if (user) {
+        if (user && !user.isAnonymous) {
+            // Signed in with a provider like Google
             allElements.authStatus.textContent = "Signed in as:";
             allElements.userIdDisplay.textContent = user.uid;
             allElements.userIdDisplay.classList.remove('hidden');
@@ -1133,19 +1085,31 @@
             allElements.signInBtn.onclick = signOutUser;
             allElements.signInBtn.classList.remove('hidden');
             allElements.playAsGuestBtn.classList.add('hidden');
-            allElements.socialHubTab.style.display = 'flex'; // Show social tab
-            allElements.achievementsTab.style.display = 'flex'; // Show achievements tab
-        } else {
+            allElements.socialHubTab.style.display = 'flex';
+            allElements.achievementsTab.style.display = 'flex';
+        } else if (user && user.isAnonymous) {
+             // Signed in as Guest
+            allElements.authStatus.textContent = "Playing as Guest:";
+            allElements.userIdDisplay.textContent = user.uid;
+            allElements.userIdDisplay.classList.remove('hidden');
+            allElements.signInBtn.textContent = "Sign In (Google)";
+            allElements.signInBtn.onclick = signInWithGoogle;
+            allElements.signInBtn.classList.remove('hidden');
+            allElements.playAsGuestBtn.classList.add('hidden');
+            allElements.socialHubTab.style.display = 'flex';
+            allElements.achievementsTab.style.display = 'flex';
+        }
+        else {
+             // Not signed in at all
             allElements.authStatus.textContent = "Not signed in.";
             allElements.userIdDisplay.classList.add('hidden');
             allElements.signInBtn.textContent = "Sign In (Google)";
             allElements.signInBtn.onclick = signInWithGoogle;
             allElements.signInBtn.classList.remove('hidden');
             allElements.playAsGuestBtn.classList.remove('hidden');
-            allElements.socialHubTab.style.display = 'none'; // Hide social tab
-            allElements.achievementsTab.style.display = 'none'; // Hide achievements tab
-            // If social tab or achievements tab was active, switch to practice
-            if (document.querySelector('.tab.active')?.dataset.tab === 'social-hub' || document.querySelector('.tab.active')?.dataset.tab === 'achievements') { // Added optional chaining
+            allElements.socialHubTab.style.display = 'none';
+            allElements.achievementsTab.style.display = 'none';
+            if (document.querySelector('.tab.active')?.dataset.tab === 'social-hub' || document.querySelector('.tab.active')?.dataset.tab === 'achievements') {
                 document.querySelector('[data-tab="practice"]').click();
             }
         }
@@ -1159,7 +1123,6 @@
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
-            // onAuthStateChanged will handle UI update and data loading
             showNotification("Signed in with Google!");
         } catch (error) {
             console.error("Google Sign-In Error:", error);
@@ -1174,7 +1137,6 @@
         }
         try {
             await signInAnonymously(auth);
-            // onAuthStateChanged will handle UI update and data loading
             showNotification("Playing as Guest!");
         } catch (error) {
             console.error("Anonymous Sign-In Error:", error);
@@ -1187,7 +1149,9 @@
         try {
             await signOut(auth);
             showNotification("Signed out.");
-            // onAuthStateChanged will handle UI update and data reset
+             // After signing out, sign in anonymously so the app remains functional
+            await signInAnonymously(auth);
+            showNotification("Now playing as Guest.");
         } catch (error) {
             console.error("Sign Out Error:", error);
             showNotification(`Sign Out Failed: ${error.message}`, true);
@@ -1212,11 +1176,9 @@
                 userProgress.streakSaversCount = data.streakSaversCount || 0;
                 userProgress.hintTokensCount = data.hintTokensCount || 0;
                 userProgress.friendsList = data.friendsList || [];
-                // Current streak is volatile, loaded from local storage
                 userProgress.correctStreak = parseInt(localStorage.getItem('currentStreak')) || 0;
                 console.log("User data loaded from Firestore:", data);
             } else {
-                // New user or no data, initialize
                 console.log("No existing user data found. Creating new profile in Firestore.");
                 await setDoc(userDocRef, {
                     userId: uid,
@@ -1228,13 +1190,7 @@
                     lastUpdated: new Date()
                 });
                 console.log("New user profile created in Firestore.");
-                // Reset userProgress to initial state for new user
-                userProgress.unlockedBadges = [];
-                userProgress.highestStreak = 0;
-                userProgress.streakSaversCount = 0;
-                userProgress.hintTokensCount = 0;
-                userProgress.friendsList = [];
-                userProgress.correctStreak = 0;
+                resetUserData(); // Reset local progress to match new server profile
             }
         } catch (e) {
             console.error("Error loading user data:", e);
@@ -1261,7 +1217,7 @@
                 hintTokensCount: userProgress.hintTokensCount,
                 friendsList: userProgress.friendsList,
                 lastUpdated: new Date()
-            }, { merge: true }); // Use merge to only update specified fields
+            }, { merge: true });
             console.log("User data saved to Firestore.");
         } catch (e) {
             console.error("Error saving user data:", e);
@@ -1281,13 +1237,13 @@
             hintTokensCount: 0,
             friendsList: [],
         };
-        localStorage.setItem('currentStreak', 0);
+        localStorage.setItem('currentStreak', '0');
         updateStreakDisplay();
         updatePowerUpsDisplay();
-        leaderboard = []; // Clear leaderboard too
+        leaderboard = [];
         friendsLeaderboard = [];
-        renderSocialHub(); // Re-render social hub after reset
-        renderAchievements(); // Re-render achievements after reset
+        renderSocialHub();
+        renderAchievements();
     }
 
     // --- SOCIAL HUB LOGIC ---
@@ -1303,10 +1259,10 @@
             leaderboard = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            })).sort((a, b) => b.highestStreak - a.highestStreak); // Sort by highest streak descending
+            })).sort((a, b) => b.highestStreak - a.highestStreak);
             console.log("Global Leaderboard updated:", leaderboard);
             if (currentSocialTab === 'global') {
-                renderSocialTabContent(); // Re-render if global tab is active
+                renderSocialTabContent();
             }
         }, (error) => {
             console.error("Error listening to leaderboard:", error);
@@ -1333,14 +1289,14 @@
             } catch (error) {
                 console.error(`Error fetching friend ${friendId} data:`, error);
             }
-            return null; // Return null if friend data not found or error
+            return null;
         });
 
         const resolvedFriendsData = await Promise.all(friendDataPromises);
         friendsLeaderboard = resolvedFriendsData.filter(Boolean).sort((a, b) => b.highestStreak - a.highestStreak);
         console.log("Friends Leaderboard updated:", friendsLeaderboard);
         if (currentSocialTab === 'friendsLeaderboard') {
-            renderSocialTabContent(); // Re-render if friends leaderboard tab is active
+            renderSocialTabContent();
         }
     }
 
@@ -1368,17 +1324,17 @@
         }
 
         friendSearchStatus = "Searching for user...";
-        renderSocialTabContent(); // Update UI with searching status
+        renderSocialTabContent();
         try {
             const friendProfileRef = doc(db, `artifacts/${APP_ID}/users/${friendInput.trim()}/profile/data`);
             const friendDocSnap = await getDoc(friendProfileRef);
 
             if (friendDocSnap.exists()) {
                 userProgress.friendsList.push(friendInput.trim());
-                await saveUserData(); // Save updated friends list to Firestore
+                await saveUserData();
                 friendSearchStatus = `Added ${friendInput.trim()} as a friend!`;
-                friendInput = ''; // Clear input
-                await fetchFriendsLeaderboard(); // Refresh friends leaderboard
+                friendInput = '';
+                await fetchFriendsLeaderboard();
             } else {
                 friendSearchStatus = "User not found.";
             }
@@ -1386,22 +1342,22 @@
             console.error("Error adding friend:", error);
             friendSearchStatus = "Error adding friend. Please try again.";
         }
-        renderSocialTabContent(); // Update UI with final status
+        renderSocialTabContent();
     }
 
     function removeFriend(friendIdToRemove) {
         console.log("Attempting to remove friend:", friendIdToRemove);
         userProgress.friendsList = userProgress.friendsList.filter(f => f !== friendIdToRemove);
-        saveUserData(); // Save updated friends list to Firestore
+        saveUserData();
         showNotification(`Removed ${friendIdToRemove} from friends.`, false);
-        fetchFriendsLeaderboard(); // Refresh friends leaderboard
-        renderSocialTabContent(); // Re-render myFriends tab
+        fetchFriendsLeaderboard();
+        renderSocialTabContent();
     }
 
     function renderSocialHub() {
         console.log("Rendering Social Hub. Current userId:", userId);
         const socialHubContentDisplay = allElements.socialTabContentDisplay;
-        socialHubContentDisplay.innerHTML = ''; // Clear previous content
+        socialHubContentDisplay.innerHTML = '';
 
         if (!userId) {
             allElements.socialAuthMessage.textContent = "Please sign in to access social features.";
@@ -1419,13 +1375,13 @@
             allElements.socialUserIdDisplay.querySelector('strong').textContent = userId;
         }
 
-        renderSocialTabContent(); // Render the active social tab content
+        renderSocialTabContent();
     }
 
     function renderSocialTabContent() {
         console.log("Rendering Social Tab Content for:", currentSocialTab);
         const socialTabContentDisplay = allElements.socialTabContentDisplay;
-        socialTabContentDisplay.innerHTML = ''; // Clear previous content
+        socialTabContentDisplay.innerHTML = '';
 
         if (!userId) {
             socialTabContentDisplay.innerHTML = `<p class="text-gray-400 text-center py-8">Please sign in to access social features.</p>`;
@@ -1506,7 +1462,7 @@
                         }
                     </ul>
                 `;
-                fetchFriendsLeaderboard(); // Ensure friends leaderboard is up-to-date
+                fetchFriendsLeaderboard();
                 break;
             case 'regional':
                 socialTabContentDisplay.innerHTML = `
